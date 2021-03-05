@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
             path = self.savefilepath.text()
 
             if path.split('.')[-1]!='txt':
-                path+=r'\test.txt'
+                path+='.txt'
 
 
 
@@ -204,10 +204,10 @@ class MainWindow(QMainWindow):
 
         if self.focusedsub is not None:
             item_name = it.text(col)
-            try:
-                if not isinstance(self.variables[item_name][-1], str):
-                    if it.checkState(0) == 2:
-
+          #  try:
+            if not isinstance(self.variables[item_name][-1], str):
+                if it.checkState(0) == 2:
+                    if item_name not in self.focusedsub.focused['Ploted'].keys():
                         color = self.focusedsub.line_styles[0]
 
 
@@ -223,17 +223,17 @@ class MainWindow(QMainWindow):
                         a.get_avg()
 
 
-                    else:
-                        if item_name in self.focusedsub.focused['Ploted'].keys():
-                            item = self.focusedsub.focused['Ploted'][item_name]
+                else:
+                    if item_name in self.focusedsub.focused['Ploted'].keys():
+                        item = self.focusedsub.focused['Ploted'][item_name]
 
-                            self.focusedsub.line_styles.append(item.opts['pen'].color().getRgb())
+                        self.focusedsub.line_styles.append(item.opts['pen'].color().getRgb())
 
-                            self.focusedsub.focused['Plot'].removeItem(item)
-                            del self.focusedsub.focused['Ploted'][item_name]
-            except Exception as e:
-
-                print('Could not plot variable',e)
+                        self.focusedsub.focused['Plot'].removeItem(item)
+                        del self.focusedsub.focused['Ploted'][item_name]
+            # except Exception as e:
+            #
+            #     print('Could not plot variable',e)
 
     def update_plots(self):
         for subwin in self.mdi.subWindowList():
@@ -331,6 +331,8 @@ class MainWindow(QMainWindow):
             self.daqinterval.setDisabled(True)
             self.daq_thread.start()
             self.daq_thread.signalStatus.connect(self.update_all)
+            self.daq_thread.save_file=self.savefilepath.text()
+            self.close_plots()
         except Exception as e:
 
             self.log_text.setPlainText(str(e))
@@ -365,7 +367,16 @@ class generic_thread(QThread):
 def run_DataViewer():
     app = QApplication(sys.argv)
     a = MainWindow()
+    a.add_variables(['Time','a','b'])
+    a.variables['Time']=list(range(int(7*24*3600/5)))
+    a.variables['a'] = list(range(int(7*24*3600/5)))
+    a.variables['b'] = list(range(int(7 * 24 * 3600 / 5)))
+
+    # a.variables['Time'] =[1,2,3,4,5,6,7,8,9]
+    # a.variables['a'] =[1,2,3,4,5,6,7,8,9]
+
     a.show()
+
     sys.exit(app.exec_())
 
 

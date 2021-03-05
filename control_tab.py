@@ -26,8 +26,7 @@ class Control:
         self.time = []
         self.tff = []
         self.tfz = []
-        self.tfffilter = []
-        self.tfzfilter = []
+
 
         self.ui.connect.clicked.connect(self.connect_arduino)
         self.ui.setlogic.clicked.connect(self.set_logic)
@@ -179,10 +178,9 @@ class Control:
             fz_air=(daq_variables['FZ_air_top']+daq_variables['FZ_air_bot'])*0.5
             ff_air = (daq_variables['FF_air_top'] + daq_variables['FF_air_bot']++ daq_variables['FF_air_mid1']++ daq_variables['FF_air_mid2']) * 0.25
 
-            res=self.process_data(ff_air,fz_air)
+            self.process_data(ff_air,fz_air)
 
-            control_variables['FF_air_filter']=round(res[0],4)
-            control_variables['FZ_air_filter'] = round(res[1],4)
+
         except Exception as e:
             print(e)
             return {}
@@ -193,17 +191,12 @@ class Control:
         self.tff.append(Tff)
         self.tfz.append(Tfz)
 
-        if len(self.tff) > 6:
-            Tff = sum(self.tff[-5:]) / 5
-            Tfz = sum(self.tfz[-5:]) / 5
 
-        self.tfffilter.append(Tff)
-        self.tfzfilter.append(Tfz)
 
-        self.control(self.tfffilter[-1], self.tfzfilter[-1])
-        self.ui.statusfftemp.setText(str(round(self.tfffilter[-1], 2)))
-        self.ui.statusfztemp.setText(str(round(self.tfzfilter[-1], 2)))
-        return self.tfffilter[-1],self.tfzfilter[-1]
+        self.control(self.tff[-1], self.tfz[-1])
+        self.ui.statusfftemp.setText(str(round(self.tff[-1], 2)))
+        self.ui.statusfztemp.setText(str(round(self.tfz[-1], 2)))
+        return self.tff[-1],self.tfz[-1]
 
     def arduino_custom_command(self):
         text = self.ui.controltest_text.text()

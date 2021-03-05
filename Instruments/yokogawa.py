@@ -3,7 +3,7 @@ import pyvisa
 
 
 
-"Generif class for Yokogawa Power Meter, reference manual https://www.axiomtest.com/documents/models/Yokogawa%20WT110%20data%20sheet.pdf"
+"Generic class for Yokogawa Power Meter, reference manual https://www.axiomtest.com/documents/models/Yokogawa%20WT110%20data%20sheet.pdf"
 
 class Yokogawa:
     def __init__(self,address,yoko_identifier=''):
@@ -31,7 +31,8 @@ class Yokogawa:
         for key,val in resp.items():
 
             if val>1e20:
-
+                self.auto_range_v(True)
+                self.auto_range_a(True)
                 resp[key]=0
 
         return resp
@@ -50,13 +51,14 @@ class Yokogawa:
         return resp
 
     def auto_range_v(self,on):
+        print('Autorange voltage {}'.format(self.identifier))
         if on:
             self.device.write(":VOLTAGE:AUTO ON")
         else:
             self.device.write(":VOLTAGE:AUTO OFF")
 
     def auto_range_a(self,on):
-        print('auto')
+        print('Autorange current {}'.format(self.identifier))
         if on:
             self.device.write(":CURRENT:AUTO ON")
         else:
@@ -66,12 +68,13 @@ class Yokogawa:
         self.device.write(":CURRENT:RANGE {}A".format(range))
 
     def reset_integral(self):
-        
+        print('Reset integral {}'.format(self.identifier))
         self.stop_integral()
         self.device.write(":INTEGRATE:RESET")
 
 
     def start_integral(self):
+        print('Start integral {}'.format(self.identifier))
         self.device.write(":INTEGRATE:START")
     def stop_integral(self):
         self.device.write(":INTEGRATE:STOP")

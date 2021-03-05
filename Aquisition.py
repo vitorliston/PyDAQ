@@ -13,12 +13,15 @@ class DAQ:
         self.curves = {}
         self.config = {}
         self.custom_vars=None
+        self.references = []
+        self.yoko1_address = None
+        self.yoko2_address = None
 
         if custom_vars!=None:
             self.custom_vars = {}
             custom_vars = open(custom_vars, "r")
             for line in custom_vars:
-                splitted = line.strip('\n').split(',')
+                splitted = line.strip('\n').split(';')
                 splitted[1]=splitted[1].replace("[","daq['")
                 splitted[1] = splitted[1].replace(']', "']")
                 self.custom_vars[splitted[0]]=splitted[1]
@@ -28,12 +31,10 @@ class DAQ:
         config_file = open(config_file, "r")
 
 
-        self.references = []
-        self.yoko1_address = None
-        self.yoko2_address = None
+
 
         for line in config_file:
-            splitted = line.strip('\n').split(',')
+            splitted = line.strip('\n').split(';')
             if splitted[0] == 'DAQ1':
                 daq1_address = splitted[1]
             elif splitted[0] == 'REF':
@@ -48,7 +49,7 @@ class DAQ:
         curve_file = open(curve_file, "r")
 
         for line in curve_file:
-            splitted = line.split(',')
+            splitted = line.split(';')
             self.curves[splitted[0]] = [float(i) for i in splitted[1:]]
 
         self.daq1=None

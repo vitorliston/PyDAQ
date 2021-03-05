@@ -59,10 +59,22 @@ class pid_tab:
     def __init__(self, ui):
 
         self.ui = ui
+        self.ui.piddisconnect.clicked.connect(self.disconnect)
         self.ui.bscanpid.clicked.connect(self.scan)
         self.pid_thread = None
         self.pid_sub = {}
         self.scanning = False
+        self.forms=[]
+    def disconnect(self):
+        self.pid_thread.thread=False
+        self.pid_thread.pid.close()
+
+        for row in range(self.ui.formLayout_10.rowCount()):
+            self.ui.formLayout_10.removeRow(0)
+        for key, value in self.pid_sub.items():
+            value['SUB'].close()
+        self.pid_sub = {}
+
     def scan(self):
         if not self.scanning:
             self.scanning = True
@@ -189,7 +201,7 @@ class pid_thread(QThread):
 
         for pid,commands in self.commands.items():
             for setting,value in commands.items():
-                print(setting,value)
+
                 try:
                     if setting!='MODE':
                         self.pid.functions[setting](int(value),unit=pid)

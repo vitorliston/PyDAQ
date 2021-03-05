@@ -42,9 +42,9 @@ class Eurotherm2216e( ModbusSerialClient ):
     def get_sptarget_loop1(self,unit=1):
         """Return the setpoint (SP) target for loop1."""
         res= self.read_holding_registers(2,unit=unit)
-        print('2',res.registers[0])
+
         res = self._parse_negative(res.registers[0])
-        print(res)
+
         return round(res / 100, 2)
 
     def get_targetout__loop1(self,unit=1):

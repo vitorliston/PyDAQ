@@ -8,7 +8,7 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-
+import numpy
 
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 
@@ -63,12 +63,11 @@ class ColorAction(QtGui.QWidgetAction):
 
 class PlotCurveItem(pg.PlotCurveItem):
     def __init__(self, *args, **kargs):
+        self.ma = 0
         super(PlotCurveItem, self).__init__(*args, **kargs)
         self.avg = None
         self.menu = QtGui.QMenu()
-
-
-
+        self.do_ma = False
 
 
         self.colorAction = ColorAction(self.menu)
@@ -79,6 +78,72 @@ class PlotCurveItem(pg.PlotCurveItem):
         fontColor = QtGui.QAction('Custom color', self)
         self.menu.addAction(fontColor)
         fontColor.triggered.connect(self.custom_color)
+
+
+
+        self.sub_menu = QMenu("Moving average")
+
+        a = QWidgetAction(self)
+
+
+        self.spin=QSpinBox()
+        self.spin.editingFinished.connect(self.moving_average)
+        a.setDefaultWidget(self.spin)
+        self.sub_menu.addAction(a)
+
+        self.menu.addMenu(self.sub_menu)
+
+        self.yData_ma=[]
+        self.yData_unaltered=[]
+    def moving_average(self):
+
+        value=self.spin.value()
+
+
+        if len(self.xData)>value:
+            self.yData_ma = []
+            self.ma = value
+            if value>1:
+                self.do_ma=True
+                self.yData_ma=self.yData_unaltered[:value-1]+list(self._moving_average(self.yData_unaltered,value))
+                self.setData_ma(self.xData, self.yData_ma)
+            else:
+                self.do_ma = False
+                self.setData_ma(self.xData,self.yData_unaltered)
+
+    def _moving_average(self,x, w):
+
+        return np.convolve(x, np.ones(w), 'valid') / w
+
+    def setData(self, *args, **kargs):
+        if len(args) == 2:
+            self.yData_unaltered = args[1]
+            if self.do_ma:
+                n=self.spin.value()
+                if len(self.yData_unaltered)>n:
+
+                    val=self.yData_ma[-1]+(self.yData_unaltered[-1]-self.yData_unaltered[-n])/n
+                    self.yData_ma.append(val)
+                else:
+                    self.do_ma=False
+                    self.spin.setValue(0)
+
+        self.setData_ma( *args, **kargs)
+
+
+    def setData_ma(self, *args, **kargs):
+
+
+        if self.ma > 1:
+
+
+
+            super().setData(args[0], self.yData_ma)
+
+
+        else:
+
+            super().setData(*args, **kargs)
 
     def custom_color(self):
         color = QtGui.QColorDialog.getColor()
@@ -91,7 +156,7 @@ class PlotCurveItem(pg.PlotCurveItem):
         pen = pg.mkPen(color=color.getRgb(), width=1)
         self.setPen(pen)
 
-       # self.menu.tooltip = tooltip
+
 
 
     def get_avg(self):
@@ -200,7 +265,7 @@ class PlotWindow(QMdiSubWindow):
         self.frame=None
         # , border=(0, 0, 0), fill=(255, 255, 255)
 
-        self.plottooltip = pg.TextItem('None', color=(0, 0, 0),anchor=(1,1))
+        self.plottooltip = pg.TextItem('None', color=(0, 0, 0),anchor=(0,1))
 
         # self.viewAll = QAction("sadsadsad", self.menu)
 
@@ -290,14 +355,11 @@ class PlotWindow(QMdiSubWindow):
         plot.plotItem.vb.menu = self.menu
 
         self.setfocused()
-        self.focused = frame
+        self.focused = self.plotlist[0]
     def setfocused(self):
 
         item=self.plotlist[0]
 
-
-
-        self.focused = item
 
         if bool(item['Ploted']):
             for toplevel in range(self.treevar.topLevelItemCount()):
@@ -328,8 +390,7 @@ class PlotWindow(QMdiSubWindow):
                     y = item.yData[ind] + (mousePoint1.x() - item.xData[ind]) * (item.yData[ind + 1] - item.yData[ind]) / (item.xData[ind + 1] - item.xData[ind])
 
                     show = True
-                    self.plottooltip.setText(
-                        "     " + item.name() + '\n     Avg ' + str(round(item.get_avg(), 2)) + '\n     X ' + str(round(item.xData[ind - 1], 2)) + '\n     Y ' + str(round(y, 2)))
+                    self.plottooltip.setText( ' '+item.name()+' '+ str(round(y, 2)) + '\n Avg ' + str(round(item.get_avg(), 2)) + '\n X ' + str(round(item.xData[ind - 1], 2)) + '\n Last ' + str(round(item.yData[-1], 2)))
 
 
                     self.plottooltip.setPos(mousePoint1.x(), mousePoint1.y())

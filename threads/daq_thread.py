@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QThread,pyqtSignal,pyqtSlot
-
+import os
 
 class daq_thread(QThread):
     signalStatus = pyqtSignal(str)
@@ -11,7 +11,7 @@ class daq_thread(QThread):
         self.variables = {}
         self.read = True
         self.save = savecheckbox.isChecked()
-        self.save_file = '../test.txt'
+        self.save_file = '/test.txt'
         self.perform_read = True
         self.read_interval = interval
         self.write_header = True
@@ -36,6 +36,8 @@ class daq_thread(QThread):
                     pass
                 self.variables[key] = val
 
+            self.variables['dt']=round(res['Time']-last_time,3)
+
             self.signalStatus.emit('D')
             if self.save:
                 self.save_to_file()
@@ -44,8 +46,9 @@ class daq_thread(QThread):
             last_time = res['Time']
 
     def save_to_file(self):
+        path=os.path.join('Saved_files',self.save_file)
 
-        file_object = open(self.save_file, 'a')
+        file_object = open(path, 'a')
 
         if self.write_header:
             self.delta_time = self.variables['Time']
@@ -55,7 +58,9 @@ class daq_thread(QThread):
         else:
             list = []
             variables = self.variables.copy()
+
             variables['Time'] -= self.delta_time
+
             for key in self.write_order:
                 list.append(str(variables[key]))
             file_object.write(','.join(list) + '\n')

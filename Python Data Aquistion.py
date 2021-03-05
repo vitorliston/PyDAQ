@@ -12,7 +12,7 @@ from Aquisition import DAQ
 from plot import PlotWindow, PlotCurveItem
 from pid_tab import pid_tab
 QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
-
+import random
 class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
@@ -208,8 +208,9 @@ class MainWindow(QMainWindow):
             if not isinstance(self.variables[item_name][-1], str):
                 if it.checkState(0) == 2:
                     if item_name not in self.focusedsub.focused['Ploted'].keys():
-                        color = self.focusedsub.line_styles[0]
 
+
+                        color=random.choice(self.focusedsub.line_styles)
 
                         a = PlotCurveItem(pen=pg.mkPen(color=color, width=1), name=item_name)
 
@@ -218,7 +219,7 @@ class MainWindow(QMainWindow):
                         self.focusedsub.focused['Plot'].addItem(a)
 
                         self.focusedsub.focused['Ploted'][item_name] = a
-                        self.focusedsub.line_styles.remove(self.focusedsub.line_styles[0])
+                        self.focusedsub.line_styles.remove(color)
                         a.setData(self.variables['Time'], self.variables[item_name])
                         a.get_avg()
 

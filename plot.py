@@ -9,7 +9,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import numpy
-
+from pyqtgraph.Point import Point
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 
 pg.setConfigOption('background', 'w')
@@ -127,6 +127,7 @@ class PlotCurveItem(pg.PlotCurveItem):
                 else:
                     self.do_ma=False
                     self.spin.setValue(0)
+                    self.ma=0
 
         self.setData_ma( *args, **kargs)
 
@@ -201,7 +202,6 @@ class PlotWidget(pg.PlotWidget):
         self.getPlotItem().layout.setContentsMargins(1,5,5,1)
         self.scene().contextMenu = None  # get rid of 'Export'
 
-        #
 
     # On right-click, raise the context menu
     def mouseClickEvent(self, ev):
@@ -225,6 +225,7 @@ class PlotWidget(pg.PlotWidget):
     def getContextMenus(self, event=None):
 
         return self.menu
+
 
 
 
@@ -304,7 +305,12 @@ class PlotWindow(QMdiSubWindow):
         self.show_tooltip = True
         self.show_hline = False
 
+
+
+
+
         self.add_subplot()
+
 
     def toogle_grid(self):
         if self.menu.grid.isChecked():
@@ -347,7 +353,7 @@ class PlotWindow(QMdiSubWindow):
         lay.addWidget(plot)
 
         frame.setLayout(lay)
-        self.plotlist.append({'Plot': plot.getPlotItem(), 'Frame': frame, 'Ploted': {}})
+        self.plotlist.append({'Widget':plot,'Plot': plot.getPlotItem(), 'Frame': frame, 'Ploted': {}})
 
         self.splitter.addWidget(frame)
 
@@ -390,7 +396,7 @@ class PlotWindow(QMdiSubWindow):
                     y = item.yData[ind] + (mousePoint1.x() - item.xData[ind]) * (item.yData[ind + 1] - item.yData[ind]) / (item.xData[ind + 1] - item.xData[ind])
 
                     show = True
-                    self.plottooltip.setText( ' '+item.name()+' '+ str(round(y, 2)) + '\n Avg ' + str(round(item.get_avg(), 2)) + '\n X ' + str(round(item.xData[ind - 1], 2)) + '\n Last ' + str(round(item.yData[-1], 2)))
+                    self.plottooltip.setText( ' '+item.name()+' '+ str(round(y, 2)) + '\n Avg ' + str(round(item.get_avg(), 2)) + '\n X ' + str(round(item.xData[ind - 1], 2)))
 
 
                     self.plottooltip.setPos(mousePoint1.x(), mousePoint1.y())

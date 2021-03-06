@@ -21,6 +21,7 @@ class Yokogawa:
 
         self.auto_range_v(True)
         self.auto_range_a(True)
+
     def read_normal(self):
 
         self.device.write(":MEASURE:NORMAL:ITEM:PRESET NORMAL")
@@ -51,14 +52,14 @@ class Yokogawa:
         return resp
 
     def auto_range_v(self,on):
-        print('Autorange voltage {}'.format(self.identifier))
+
         if on:
             self.device.write(":VOLTAGE:AUTO ON")
         else:
             self.device.write(":VOLTAGE:AUTO OFF")
 
     def auto_range_a(self,on):
-        print('Autorange current {}'.format(self.identifier))
+
         if on:
             self.device.write(":CURRENT:AUTO ON")
         else:

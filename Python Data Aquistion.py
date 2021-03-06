@@ -13,6 +13,7 @@ from plot import PlotWindow, PlotCurveItem
 from pid_tab import pid_tab
 QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 import random
+import csv
 class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
@@ -63,12 +64,11 @@ class MainWindow(QMainWindow):
         self.curves_file='curves.txt'
         self.custom_file = 'custom_vars.txt'
 
-        try:
-            file = open(self.settings_file, 'r')
+        self.settings_model = QStandardItemModel(self)
 
-            self.settingstext.setPlainText(file.read())
-        except:
-            pass
+
+        self.tableView.setModel(self.settings_model)
+
         try:
             file = open(self.curves_file, 'r')
 
@@ -85,6 +85,10 @@ class MainWindow(QMainWindow):
         self.genericthread=None
         self.save_file='test.txt'
         self.record=False
+        try:
+            self.table_loadCsv(self.settings_file,self.settings_model,['Channel','Name','Curve'])
+        except:
+            pass
     def save_plots(self):
         i=0
         self.plots_colors={}
@@ -151,6 +155,34 @@ class MainWindow(QMainWindow):
             self.daq_thread.write_header = True
 
 
+    def table_loadCsv(self, fileName,model,header):
+        with open(fileName, "r") as fileInput:
+            for row in csv.reader(fileInput,delimiter=';'):
+                items = [
+                    QStandardItem(field)
+                    for field in row
+                ]
+                model.appendRow(items)
+
+        for i,val in enumerate(header):
+            model.setHeaderData(i, Qt.Horizontal, val)
+
+
+
+    def table_writeCsv(self, fileName,model):
+        with open(fileName, "w") as fileOutput:
+            writer = csv.writer(fileOutput,delimiter=';')
+            for rowNumber in range(self.model.rowCount()):
+                fields = [
+                    model.data(
+                        model.index(rowNumber, columnNumber),
+                        QtCore.Qt.DisplayRole
+                    )
+                    for columnNumber in range(self.model.columnCount())
+                ]
+                writer.writerow(fields)
+
+
     def open_custom(self):
         file = QFileDialog.getOpenFileName(self, " Open custom variables", '', filter="(*.txt) ")[0]
         self.custom_file = file
@@ -165,8 +197,11 @@ class MainWindow(QMainWindow):
     def open_settings(self):
         file = QFileDialog.getOpenFileName(self, " Open settings", '', filter="(*.txt) ")[0]
         self.settings_file = file
-        file=open(file,'r')
-        self.settingstext.setPlainText(file.read())
+        # file=open(file,'r')
+        # self.settingstext.setPlainText(file.read())
+        self.table_loadCsv(self.settings_file,self.settings_model,['Channel','Name','Curve'])
+
+
     def open_curves(self):
         file = QFileDialog.getOpenFileName(self, " Open curves", '', filter="(*.txt) ")[0]
         self.curves_file = file
@@ -174,8 +209,7 @@ class MainWindow(QMainWindow):
         self.curvestext.setPlainText(file.read())
 
     def save_settings(self):
-        with open(self.settings_file, 'w') as yourFile:
-            yourFile.write(str(self.settingstext.toPlainText()))
+        self.table_writeCsv(self.settings_file,self.settings_model)
         self.statusBar().showMessage('Settings saved, restart aquisition to apply changes',3000)
 
     def save_curves(self):
@@ -186,7 +220,7 @@ class MainWindow(QMainWindow):
 
 
     def scan_instrumens(self,response=False):
-
+        self.instrument_scanner_text.clear()
         if isinstance(response,bool):
 
             self.genericthread=generic_thread(self.daq.get_devices_identification)
@@ -194,7 +228,7 @@ class MainWindow(QMainWindow):
             self.genericthread.signalStatus.connect(self.scan_instrumens)
             self.instrument_scanner_text.appendPlainText('Scanning...')
         else:
-            self.instrument_scanner_text.clear()
+
 
             self.instrument_scanner_text.appendPlainText(response)
 
@@ -235,16 +269,28 @@ class MainWindow(QMainWindow):
             # except Exception as e:
             #
             #     print('Could not plot variable',e)
-
+        self.update_plots()
     def update_plots(self):
         for subwin in self.mdi.subWindowList():
             for subplot in subwin.plotlist:
+                a=''
                 for curve in subplot['Plot'].curves:
                     if isinstance(curve, PlotCurveItem):
                         item_name = curve.name()
-
                         curve.setData(self.variables['Time'], self.variables[item_name])
                         curve.get_avg()
+                        a+=item_name+''+str(self.variables[item_name][-1])
+
+
+                for row in subplot['Plot'].legend.items:
+                    name=row[1].text.split(' ')[0]
+                    print(name)
+                    row[1].setText(name+' '+str(self.variables[name][-1]),size='8')
+
+
+
+
+
 
     def add_variables(self, variables):
 
@@ -372,7 +418,7 @@ def run_DataViewer():
     a.variables['Time']=list(range(int(7*24*3600/5)))
     a.variables['a'] = list(range(int(7*24*3600/5)))
     a.variables['b'] = list(range(int(7 * 24 * 3600 / 5)))
-
+    a.update_plots()
     # a.variables['Time'] =[1,2,3,4,5,6,7,8,9]
     # a.variables['a'] =[1,2,3,4,5,6,7,8,9]
 

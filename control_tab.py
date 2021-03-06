@@ -1,12 +1,8 @@
-import PyQt5
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMainWindow
+import time
 
-
+from inverter import inverter
 from threads.arduino_thread import Arduino
 from threads.inverter_thread import Inverter
-import time
-from inverter import inverter
 
 
 class Control:
@@ -27,7 +23,6 @@ class Control:
         self.tff = []
         self.tfz = []
 
-
         self.ui.connect.clicked.connect(self.connect_arduino)
         self.ui.setlogic.clicked.connect(self.set_logic)
 
@@ -35,8 +30,7 @@ class Control:
         self.ui.controltest.clicked.connect(self.arduino_custom_command)
         self.ui.sendrpm.clicked.connect(self.custom_rpm)
 
-
-        self.control_variables = {'Valve': 0, 'fan_ff': 0, 'fan_fz': 0, 'RPM': 0, 'Only_fz': 0,'Set_rpm':0}
+        self.control_variables = {'Valve': 0, 'fan_ff': 0, 'fan_fz': 0, 'RPM': 0, 'Only_fz': 0, 'Set_rpm': 0}
         self.valve_positions = {'Closed': 100, 'FF': 50, 'FF-FZ': 25, 'FZ': 0}
         self.valve_names = {}
         for key, val in self.valve_positions.items():
@@ -51,19 +45,18 @@ class Control:
         self.delay = 0
         self.roots = [1, 1]
         self.first = True
+        self.stats = {'FZ': 0, 'FF': 0, 'Closed': 0, 'Time': 0, 'Off_time': 0, 'Wh': 0}
+        self.cycle_finished = False
 
     def set_logic(self):
-        self.logic_vars={}
+        self.logic_vars = {}
         self.first = True
         l = self.ui.logicinput.toPlainText().split('\n')
         self.ui.console.appendPlainText('Set logic:')
         for i in l:
-
-            i=i.split(',')
+            i = i.split(',')
             self.logic_vars[i[0]] = float(i[1])
-            self.ui.console.appendPlainText(i[0]+':'+str(i[1]))
-
-
+            self.ui.console.appendPlainText(i[0] + ':' + str(i[1]))
 
         from logic import logic
         self.external_logic = logic
@@ -71,7 +64,7 @@ class Control:
     def connect_inverter(self):
 
         try:
-            if self.inverter!=None:
+            if self.inverter != None:
                 try:
                     self.inverter.disconnect()
                 except:
@@ -113,8 +106,6 @@ class Control:
         elif message == 'UPDATE':
             self.update_gui_arduino()
 
-
-
     def connect_arduino(self):
 
         if self.arduino_thread is None:
@@ -129,9 +120,9 @@ class Control:
     def update_gui_arduino(self):
         #
 
-        a=self.arduino_thread.variables
+        a = self.arduino_thread.variables
 
-        valve_delta,ff_fan,fz_fan=a['Valve'],int(a['fan_ff']),int(a['fan_fz'])
+        valve_delta, ff_fan, fz_fan = a['Valve'], int(a['fan_ff']), int(a['fan_fz'])
 
         if valve_delta != None:
             if valve_delta == 3000:
@@ -144,8 +135,8 @@ class Control:
                 self.ui.statusstep.setText(str(float(self.ui.statusstep.text()) + valve_delta))
             if float(self.ui.statusstep.text()) < 0:
                 self.ui.statusstep.setText('0')
-            if float(self.ui.statusstep.text()) > 105:
-                self.ui.statusstep.setText('105')
+            if float(self.ui.statusstep.text()) > 100:
+                self.ui.statusstep.setText('100')
 
         if ff_fan is not None:
 
@@ -163,7 +154,32 @@ class Control:
 
         self.ui.statuscomp.setText(str(self.inverter_thread.variables['RPM']))
 
-    def get_variables(self,daq_variables):
+    def update_stats(self, valve, dt, Wh):
+
+        if valve == 'FF':
+
+            if self.cycle_finished:
+                fz = self.stats['FZ']
+                ff = self.stats['FF']
+                closed = self.stats['Closed']
+                wh_old = self.stats['Wh']
+                kwhmo = (Wh - wh_old) / 1000 * (365 / 12 * 24 * 3600) / (fz + ff + closed)
+
+                self.ui.cyclelog.appendPlainText('RTR ' + str(round(100 * (fz + ff) / (fz + ff + closed), 2)) + '\n')
+                self.ui.cyclelog.appendPlainText('Efz ' + str(round(100 * (fz) / (fz + ff), 2)) + '\n')
+                self.ui.cyclelog.appendPlainText('Efz ' + str(round(100 * (ff) / (fz + ff), 2)) + '\n')
+                self.ui.cyclelog.appendPlainText('Cycle duration ' + str(round(100 * (ff) / (fz + ff), 2)) + '\n')
+                self.ui.cyclelog.appendPlainText('Off duration ' + str(round(100 * (ff) / (fz + ff), 2)) + '\n')
+                self.ui.cyclelog.appendPlainText('Cycle kwh/mo ' + str(round(kwhmo, 2)) + '\n')
+                self.stats['Wh'] = Wh
+                self.ui.cyclelog.appendPlainText('________________________________' + '\n')
+
+        self.stats[valve] += dt
+        if valve == 'CLosed':
+            self.cycle_finished = True
+
+    def get_variables(self, daq_variables):
+
         try:
             control_variables = self.control_variables.copy()
             if self.arduino_thread is not None:
@@ -172,14 +188,11 @@ class Control:
                 control_variables.update(self.inverter_thread.variables)
 
 
-
             control_variables['Valve_setting'] = self.valve_names[int(float(self.ui.statusstep.text()))]
 
-            fz_air=(daq_variables['FZ_air_top']+daq_variables['FZ_air_bot'])*0.5
-            ff_air = (daq_variables['FF_air_top'] + daq_variables['FF_air_bot']++ daq_variables['FF_air_mid1']++ daq_variables['FF_air_mid2']) * 0.25
-
-            self.process_data(ff_air,fz_air)
-
+            self.process_data(daq_variables['FF_air'], daq_variables['FZ_air'])
+            if self.ui.enablelogic.isChecked():
+                self.update_stats(control_variables['Valve_setting'], daq_variables['dt'], daq_variables['WT1_WH1'])
 
         except Exception as e:
             print(e)
@@ -191,12 +204,17 @@ class Control:
         self.tff.append(Tff)
         self.tfz.append(Tfz)
 
-
-
         self.control(self.tff[-1], self.tfz[-1])
         self.ui.statusfftemp.setText(str(round(self.tff[-1], 2)))
         self.ui.statusfztemp.setText(str(round(self.tfz[-1], 2)))
-        return self.tff[-1],self.tfz[-1]
+        try:
+            self.ui.statuscomp.setText(str(self.inverter_thread.variables['RPM']))
+        except:
+            pass
+
+
+
+        return self.tff[-1], self.tfz[-1]
 
     def arduino_custom_command(self):
         text = self.ui.controltest_text.text()
@@ -205,14 +223,14 @@ class Control:
             self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' + 'Sent 0,0,0')
             self.arduino_thread.command_arduino.append('0,0,0\r')
         else:
-            self.arduino_thread.command_arduino.append(text+'\r')
+            self.arduino_thread.command_arduino.append(text + '\r')
             self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' + text)
 
     def control(self, T_ff, T_fz, test=False):
-        logic=2
+        logic = 2
         if self.external_logic is not None and time.time() - self.delay > 120 or test:
             roots = [0, 0]
-            if logic ==1:
+            if logic == 1:
                 if not self.compressor_ison:
                     if T_fz - self.logic_vars['fz_max'] > 0:
                         roots[0] = 1
@@ -236,26 +254,23 @@ class Control:
                         roots[1] = 1
                     else:
                         roots[1] = -1
-            elif logic==2:
-
+            elif logic == 2:
 
                 if not self.compressor_ison or self.only_fz:
-                    if T_ff - self.logic_vars['ff_max']>0:
+                    if T_ff - self.logic_vars['ff_max'] > 0:
 
                         roots[0] = 1
                     else:
                         roots[0] = -1
 
                 else:
-                    if T_ff - self.logic_vars['ff_min']>0:
+                    if T_ff - self.logic_vars['ff_min'] > 0:
                         roots[0] = 1
                     else:
                         roots[0] = -1
 
-
-
                 if self.compressor_ison:
-                    if T_fz - self.logic_vars['fz_min']>0:
+                    if T_fz - self.logic_vars['fz_min'] > 0:
                         roots[1] = 1
                     else:
                         roots[1] = -1
@@ -328,7 +343,7 @@ class Control:
             command = i1 + ',' + i2 + ',' + i3
 
             self.arduino_thread.command_arduino.append(command)
-            self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' + 'Sent '+ command)
+            self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' + 'Sent ' + command)
 
             self.main_interface.statusbar.showMessage('Command sent', 10000)
         else:
@@ -342,21 +357,15 @@ class Control:
             self.inverter_thread.command_inverter = int(self.ui.rpminput.text())
         elif self.inverter is not None:
             self.inverter.set_rotation(int(self.ui.rpminput.text()))
-            self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' +'Sent rpm ' + self.ui.rpminput.text())
+            self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' + 'Sent rpm ' + self.ui.rpminput.text())
 
     def reset_valve(self):
         command = '3000' + ',0,0'
-        self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' +'Sent reset valve ' + command)
+        self.ui.console.appendPlainText(time.strftime("%Y:%m:%d %H:%M:%S") + '\n' + 'Sent reset valve ' + command)
         self.arduino_thread.command_arduino.append(command)
 
-
-
-
-
-
-    
-#serialConnection = connect('USB-SERIAL CH340')
-#while True:
-   # serialConnection.write('0,0,0\r'.encode())
-  #  response = serialConnection.readline().decode('utf-8').strip('\r\n')
- #   print(response)
+# serialConnection = connect('USB-SERIAL CH340')
+# while True:
+# serialConnection.write('0,0,0\r'.encode())
+#  response = serialConnection.readline().decode('utf-8').strip('\r\n')
+#   print(response)

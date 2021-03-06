@@ -284,7 +284,7 @@ class MainWindow(QMainWindow):
 
                 for row in subplot['Plot'].legend.items:
                     name=row[1].text.split(' ')[0]
-                    print(name)
+
                     row[1].setText(name+' '+str(self.variables[name][-1]),size='8')
 
 

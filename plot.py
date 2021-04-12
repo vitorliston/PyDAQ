@@ -137,10 +137,10 @@ class PlotCurveItem(pg.PlotCurveItem):
 
         if self.ma > 1:
 
-
-
-            super().setData(args[0], self.yData_ma)
-
+            try:
+                super().setData(args[0], self.yData_ma)
+            except:
+                super().setData(*args, **kargs)
 
         else:
 
@@ -199,7 +199,7 @@ class PlotWidget(pg.PlotWidget):
     def __init__(self, *args, **kargs):
         super(PlotWidget, self).__init__(*args, **kargs)
         self.plotItem.ctrlMenu = None  # get rid of 'Plot Options'
-        self.getPlotItem().layout.setContentsMargins(1,5,5,1)
+        self.getPlotItem().layout.setContentsMargins(0,0,0,0)
         self.scene().contextMenu = None  # get rid of 'Export'
 
 
@@ -238,6 +238,7 @@ class Qframe2(QFrame):
 
     @pyqtSlot()
     def mousePressEvent(self, *args, **kwargs):
+
         self.signalStatus.emit(self)
 
 
@@ -359,6 +360,8 @@ class PlotWindow(QMdiSubWindow):
 
         # self.fg.setRowStretch(self.fg.rowCount() - 1, 2)
         plot.plotItem.vb.menu = self.menu
+
+        plot.getPlotItem().getAxis('left').setWidth(40)
 
         self.setfocused()
         self.focused = self.plotlist[0]

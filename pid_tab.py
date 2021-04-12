@@ -20,12 +20,12 @@ class PID_window(QMdiSubWindow):
         self.setMaximumSize(250, 400)
         self.commands={}
         uic.loadUi(os.path.dirname(__file__) + '/pid.ui', self.ui)
-
-        self.ui.setpoint.textEdited.connect(partial(self.command,self.ui.setpoint,'SETPOINT',100))
-        self.ui.output.textEdited.connect(partial(self.command,self.ui.output,'OUTPUT',10))
-        self.ui.high.textEdited.connect(partial(self.command,self.ui.high,'HIGH',10))
-        self.ui.low.textEdited.connect(partial(self.command,self.ui.low,'LOW',10))
-        self.ui.mode.textActivated.connect(partial(self.command,self.ui.mode,'MODE'))
+      
+        self.ui.setpoint.textChanged.connect(partial(self.command,self.ui.setpoint,'SETPOINT',100))
+        self.ui.output.textChanged.connect(partial(self.command,self.ui.output,'OUTPUT',10))
+        self.ui.high.textChanged.connect(partial(self.command,self.ui.high,'HIGH',10))
+        self.ui.low.textChanged.connect(partial(self.command,self.ui.low,'LOW',10))
+        self.ui.mode.currentTextChanged.connect(partial(self.command,self.ui.mode,'MODE'))
         self.ui.setpid.clicked.connect(self.set)
         self.scanning=False
         self.items_to_update=[]
@@ -77,11 +77,18 @@ class pid_tab:
 
     def scan(self):
         if not self.scanning:
-            self.scanning = True
-            self.ui.statusbar.showMessage('Scanning PIDs')
-            self.pid_thread = pid_thread()
-            self.pid_thread.signalStatus.connect(self.communication)
-            self.pid_thread.start()
+            if self.pid_thread is not None:
+                self.disconnect()
+                self.pid_thread=None
+
+
+                self.scanning = True
+                self.ui.statusbar.showMessage('Scanning PIDs')
+                self.pid_thread = pid_thread()
+                self.pid_thread.signalStatus.connect(self.communication)
+                self.pid_thread.start()
+
+
 
     def communication(self, message):
         if message == 'PID FOUND':
@@ -126,7 +133,7 @@ class pid_tab:
     def add_pid(self):
         sub = PID_window(self.pid_thread.pid_ids[-1])
 
-        sub.setWindowTitle('PID')
+        sub.setWindowTitle('PID'+ str(self.pid_thread.pid_ids[-1]))
         a = QLabel('PID ' + str(self.pid_thread.pid_ids[-1]))
         b = QPushButton('Show')
         b.clicked.connect(partial(self.show,sub))

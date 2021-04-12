@@ -43,10 +43,9 @@ class Arduino(QThread):
                         del self.command_arduino[0]
                     if self.serialConnection.inWaiting()>0:
                         a=self.read_arduino()
+
                         if bool(a):
                             self.variables.update(a)
-
-
 
                             self.signalStatus.emit('UPDATE')
 

@@ -64,7 +64,7 @@ class inverter:
         response = []
         for i in range(5):
             a = self.ser.read()
-
+            print(a)
             response.append(a.hex())
         RES=self.parse_response('-'.join(response))
         return RES
@@ -101,7 +101,7 @@ class inverter:
         checksum = 0xff - int(str(hex(Sum))[0:2] + str(hex(Sum))[-2] + str(hex(Sum))[-1], 16) + 1
 
         array = [int(A, 16), int(B, 16), int(C, 16), int(D, 16), checksum]
-      
+          
         values = bytearray(array)
       
         self.ser.write(values)
@@ -110,7 +110,7 @@ class inverter:
       
         for i in range(5):
             a = self.ser.read()
-           # print(a)
+          
             if a==b'':
              
                 break
@@ -145,7 +145,7 @@ class inverter:
         array = [int(A, 16), int(B, 16), int(C, 16), int(D, 16), checksum]
 
         values = bytearray(array)
-
+      
         self.ser.write(values)
 
         response = []
@@ -162,6 +162,7 @@ class inverter:
 if __name__=='__main__':
     a=inverter('COM4',600)
    
-    while True:
-        print(a.set_rotation(0))
+   # while True:
+ 
+    print(a.set_rotation(0))
        

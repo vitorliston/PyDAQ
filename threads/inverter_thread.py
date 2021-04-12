@@ -1,7 +1,7 @@
 
 from PyQt5.QtWidgets import QMainWindow
 from time import sleep
-
+from inverter import inverter
 import PyQt5
 from PyQt5 import QtCore
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -13,9 +13,10 @@ PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, Tru
 class Inverter(QThread):
     signalStatus = pyqtSignal(str)
 
-    def __init__(self, inverter):
+    def __init__(self, port,baud):
         QThread.__init__(self)
-
+        self.port=port
+        self.baud=baud
         self.command_inverter = None
         self.testvariable = 0
         self.thread = True
@@ -26,6 +27,13 @@ class Inverter(QThread):
 
     @QtCore.pyqtSlot()
     def run(self):
+        try:
+            self.inverter = inverter(self.port, self.baud)
+            self.signalStatus.emit('Connected')
+        except:
+
+            self.thread=False
+            self.signalStatus.emit('Error')
 
         while self.thread:
             sleep(2)

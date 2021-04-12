@@ -7,13 +7,18 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from threads.daq_thread import daq_thread
+from threads.save_thread import save_thread
 from control_tab import Control
 from Aquisition import DAQ
 from plot import PlotWindow, PlotCurveItem
 from pid_tab import pid_tab
+import matplotlib.cm as cm
+
 QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 import random
 import csv
+import time
+
 class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
@@ -50,9 +55,9 @@ class MainWindow(QMainWindow):
        
         self.line_colors = [(255, 0, 0), (0, 200, 0), (0, 0, 230), (150, 150, 0), (0, 150, 150), (153, 51, 255), (255, 0, 255), (0, 0, 0)]
 
-
+        self.variable_widgets=[]
         self.mdi.subWindowActivated.connect(self.setfocusedsub)
-
+        self.colormap=cm.jet
         self.addplot.clicked.connect(self.add_plot)
         self.reorganize.clicked.connect(self.reorgsubs)
         self.treevar.setHeaderHidden(False)
@@ -63,10 +68,10 @@ class MainWindow(QMainWindow):
         self.settings_file='config.txt'
         self.curves_file='curves.txt'
         self.custom_file = 'custom_vars.txt'
-
+        self.save_thread=None
         self.settings_model = QStandardItemModel(self)
 
-
+        self.write_order=[]
         self.tableView.setModel(self.settings_model)
 
         try:
@@ -83,7 +88,7 @@ class MainWindow(QMainWindow):
             pass
 
         self.genericthread=None
-        self.save_file='test.txt'
+        self.save_file='test.csv'
         self.record=False
         try:
             self.table_loadCsv(self.settings_file,self.settings_model,['Channel','Name','Curve'])
@@ -127,32 +132,38 @@ class MainWindow(QMainWindow):
 
 
     def clear_plots(self):
-        self.delta_time += self.variables['Time'][-1]
-        self.variables={}
-        self.first_output = True
+        if len(self.variables['Time'])>0:
+            self.delta_time += self.variables['Time'][-1]
+            self.variables={}
+            self.first_output = True
 
     def record_test(self):
         save = self.checksavefile.isChecked()
         if save:
-            self.checksavefile.setText('Recording')
-            self.savefilepath.setDisabled(True)
+            if self.daq_thread is not None:
+                self.daq_thread.daq.start_recording()
+                self.checksavefile.setText('Recording')
+                self.savefilepath.setDisabled(True)
+                path = self.savefilepath.text()
+
+                if path.split('.')[-1]!='csv':
+                    path+='.csv'
+
+                self.save_thread = save_thread(path,self.write_order)
+
+                self.save_thread.start()
+
         else:
             self.checksavefile.setText('Record')
             self.savefilepath.setDisabled(False)
+            self.save_thread.save=False
+            self.save_thread=None
 
 
 
-        if self.daq_thread is not None:
-            path = self.savefilepath.text()
-
-            if path.split('.')[-1]!='txt':
-                path+='.txt'
 
 
 
-            self.daq_thread.save_file = path
-            self.daq_thread.save = save
-            self.daq_thread.write_header = True
 
 
     def table_loadCsv(self, fileName,model,header):
@@ -238,37 +249,43 @@ class MainWindow(QMainWindow):
 
         if self.focusedsub is not None:
             item_name = it.text(col)
-          #  try:
-            if not isinstance(self.variables[item_name][-1], str):
-                if it.checkState(0) == 2:
-                    if item_name not in self.focusedsub.focused['Ploted'].keys():
+            try:
+                if not isinstance(self.variables[item_name][-1], str):
+                    if it.checkState(0) == 2:
+                        if item_name not in self.focusedsub.focused['Ploted'].keys():
+
+                            if not bool(self.focusedsub.line_styles):
+                                self.focusedsub.line_styles=self.line_colors.copy()
+
+                            color=random.choice(self.focusedsub.line_styles)
 
 
-                        color=random.choice(self.focusedsub.line_styles)
-
-                        a = PlotCurveItem(pen=pg.mkPen(color=color, width=1), name=item_name)
+                            a = PlotCurveItem(pen=pg.mkPen(color=color, width=1), name=item_name)
 
 
 
-                        self.focusedsub.focused['Plot'].addItem(a)
+                            self.focusedsub.focused['Plot'].addItem(a)
 
-                        self.focusedsub.focused['Ploted'][item_name] = a
-                        self.focusedsub.line_styles.remove(color)
-                        a.setData(self.variables['Time'], self.variables[item_name])
-                        a.get_avg()
+                            self.focusedsub.focused['Ploted'][item_name] = a
+                            self.focusedsub.line_styles.remove(color)
+                            a.setData(self.variables['Time'], self.variables[item_name])
+                            a.get_avg()
 
 
-                else:
-                    if item_name in self.focusedsub.focused['Ploted'].keys():
-                        item = self.focusedsub.focused['Ploted'][item_name]
+                    else:
+                        if item_name in self.focusedsub.focused['Ploted'].keys():
 
-                        self.focusedsub.line_styles.append(item.opts['pen'].color().getRgb())
+                            item = self.focusedsub.focused['Ploted'][item_name]
 
-                        self.focusedsub.focused['Plot'].removeItem(item)
-                        del self.focusedsub.focused['Ploted'][item_name]
-            # except Exception as e:
-            #
-            #     print('Could not plot variable',e)
+                            self.focusedsub.line_styles.append(item.opts['pen'].color().getRgb())
+
+                            self.focusedsub.focused['Plot'].removeItem(item)
+                            del self.focusedsub.focused['Ploted'][item_name]
+
+            except Exception as e:
+
+                print('Could not plot variable',e)
+
         self.update_plots()
     def update_plots(self):
         for subwin in self.mdi.subWindowList():
@@ -277,15 +294,16 @@ class MainWindow(QMainWindow):
                 for curve in subplot['Plot'].curves:
                     if isinstance(curve, PlotCurveItem):
                         item_name = curve.name()
-                        curve.setData(self.variables['Time'], self.variables[item_name])
-                        curve.get_avg()
-                        a+=item_name+''+str(self.variables[item_name][-1])
+                        if len(self.variables[item_name]) > 0:
+                            curve.setData(self.variables['Time'], self.variables[item_name])
+                            curve.get_avg()
+                            a+=item_name+''+str(self.variables[item_name][-1])
 
 
                 for row in subplot['Plot'].legend.items:
                     name=row[1].text.split(' ')[0]
-
-                    row[1].setText(name+' '+str(self.variables[name][-1]),size='8')
+                    if len(self.variables[name])>0:
+                        row[1].setText(name+' '+str(self.variables[name][-1]),size='8')
 
 
 
@@ -293,18 +311,33 @@ class MainWindow(QMainWindow):
 
 
     def add_variables(self, variables):
-
+        self.variable_widgets = []
         self.treevar.clear()
+
+        watt = QTreeWidgetItem(self.treevar)
+
+        watt.setText(0, 'Wattmeter')
+
 
 
         for var in variables:
             self.variables[var] = []
-            item = QTreeWidgetItem(self.treevar)
-            item.setText(0, var)
-            item.setText(1, '0')
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(0, Qt.Unchecked)
+            if var[:2]=='WT':
 
+                item = QTreeWidgetItem(watt)
+                self.variable_widgets.append(item)
+                item.setText(0, var)
+                item.setText(1, '0')
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(0, Qt.Unchecked)
+            else:
+
+                item = QTreeWidgetItem(self.treevar)
+                self.variable_widgets.append(item)
+                item.setText(0, var)
+                item.setText(1, '0')
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(0, Qt.Unchecked)
 
 
 
@@ -332,12 +365,31 @@ class MainWindow(QMainWindow):
     def close_plots(self):
         self.mdi.closeAllSubWindows()
 
-    def update_all(self):
+    def gradient_color(self,x):
 
-        variables = self.daq_thread.variables
+
+        col=self.colormap(0.0067*x + 0.3333)
+
+
+        return QColor(int(col[0]*255),int(col[1]*255),int(col[2]*255),int(col[3]*150))
+
+
+
+    def update_all(self):
+        self.daq_thread.variables.update(self.control_tab.get_variables(self.daq_thread.variables))
+
+        if self.save_thread is not None:
+            self.save_thread.variables = self.daq_thread.variables.copy()
+            self.save_thread.save_point=True
+            self.record_time.setText(time.strftime('%H:%M:%S', time.gmtime(self.save_thread.record_time)))
+
+        variables = self.daq_thread.variables.copy()
         variables['Time'] -= self.delta_time
         variables['Time']=round(variables['Time'],4)
-        variables.update(self.control_tab.get_variables(variables))
+
+
+
+
 
         if self.first_output:
             output = []
@@ -346,24 +398,35 @@ class MainWindow(QMainWindow):
                 self.variables[key] = [val]
             self.add_variables(output)
             self.first_output = False
-            self.daq_thread.write_order = output
+            self.write_order = output
 
             a=self.daq_thread.daq.get_connected_devices()
+
             for i in a:
                 self.log_text.appendPlainText(i)
 
                 self.variables[key].append(val)
-            for toplevel in range(self.treevar.topLevelItemCount()):
-                qitem = self.treevar.topLevelItem(toplevel)
-                qitem.setText(1, str(variables[qitem.text(0)]))
-        else:
+            for qitem in self.variable_widgets:
 
+
+                var = variables[qitem.text(0)]
+                qitem.setText(1, str(var))
+
+
+
+
+        else:
 
             for key, val in variables.items():
                 self.variables[key].append(val)
-            for toplevel in range(self.treevar.topLevelItemCount()):
-                qitem = self.treevar.topLevelItem(toplevel)
-                qitem.setText(1, str(variables[qitem.text(0)]))
+            for qitem in self.variable_widgets:
+
+                var=variables[qitem.text(0)]
+                qitem.setText(1, str(var))
+             
+                if qitem.text(0) in self.daq.temperature_vars:
+
+                    qitem.setBackground(1,self.gradient_color(var))
 
         self.update_plots()
 
@@ -375,11 +438,13 @@ class MainWindow(QMainWindow):
 
 
             self.daq_thread = daq_thread(self.daq,self.checksavefile,int(self.daqinterval.text()))
+            self.daq_thread.control_tab=self.control_tab
             self.daqinterval.setDisabled(True)
             self.daq_thread.start()
             self.daq_thread.signalStatus.connect(self.update_all)
             self.daq_thread.save_file=self.savefilepath.text()
             self.close_plots()
+
         except Exception as e:
 
             self.log_text.setPlainText(str(e))
@@ -414,10 +479,10 @@ class generic_thread(QThread):
 def run_DataViewer():
     app = QApplication(sys.argv)
     a = MainWindow()
-    a.add_variables(['Time','a','b'])
-    a.variables['Time']=list(range(int(7*24*3600/5)))
-    a.variables['a'] = list(range(int(7*24*3600/5)))
-    a.variables['b'] = list(range(int(7 * 24 * 3600 / 5)))
+    a.add_variables(['Time','a'])
+    a.variables['Time']=list(range(int(50000)))
+    a.variables['a'] = list(range(50000))
+
     a.update_plots()
     # a.variables['Time'] =[1,2,3,4,5,6,7,8,9]
     # a.variables['a'] =[1,2,3,4,5,6,7,8,9]

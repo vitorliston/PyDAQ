@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QThread,pyqtSignal,pyqtSlot
-import os
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot
+from time import time
 
 class daq_thread(QThread):
     signalStatus = pyqtSignal(str)
@@ -16,12 +16,19 @@ class daq_thread(QThread):
         self.read_interval = interval
         self.write_header = True
         self.write_order = []
+        self.record_time = 0
+
+        self.file = None
+        self.path = None
 
     @pyqtSlot()
     def run(self):
-        last_time = 0
-        delta = 0
+
+        delta = -self.read_interval
+
         self.daq.reset_yokogawa()
+
+        last_time=0
 
         while self.read:
 
@@ -29,40 +36,21 @@ class daq_thread(QThread):
 
             res = self.daq.read_all()
 
-            for key, val in res.items():
-                try:
-                    val = round(val, 4)
-                except:
-                    pass
-                self.variables[key] = val
 
-            self.variables['dt']=round(res['Time']-last_time,3)
+
+            self.variables.update(res)
+
+            self.variables['dt'] = round(res['Time'] - last_time, 2)
 
             self.signalStatus.emit('D')
-            if self.save:
-                self.save_to_file()
-            delta += (self.read_interval - (res['Time'] - last_time))
+           
+            delta += (self.read_interval - (res['Time'] - last_time)) * 0.5
+     
+            if delta > self.read_interval:
+                delta = 0
+            if delta < -self.read_interval:
+                delta = -self.read_interval
 
             last_time = res['Time']
 
-    def save_to_file(self):
-        path=os.path.join('Saved_files',self.save_file)
 
-        file_object = open(path, 'a')
-
-        if self.write_header:
-            self.delta_time = self.variables['Time']
-            self.write_header = False
-            self.daq.start_recording()
-            file_object.write(','.join(self.write_order) + '\n')
-        else:
-            list = []
-            variables = self.variables.copy()
-
-            variables['Time'] -= self.delta_time
-
-            for key in self.write_order:
-                list.append(str(variables[key]))
-            file_object.write(','.join(list) + '\n')
-
-        file_object.close()

@@ -6,6 +6,7 @@ import pyvisa
 from CoolProp.CoolProp import PropsSI
 from Instruments.HP_E1326 import HP_E1326B
 from Instruments.yokogawa import Yokogawa
+from Instruments.Agilent_34980A import Agilent_34980A
 
 
 class DAQ:
@@ -13,7 +14,7 @@ class DAQ:
         pass
 
     def initialize(self, config_file, curve_file, custom_vars='custom_vars.txt'):
-        self.available_daq = {'E1326B': HP_E1326B}
+        self.available_daq = {'E1326B': HP_E1326B,'34980A':Agilent_34980A}
         self.curves = {}
         self.config = {}
         self.custom_vars = None
@@ -157,12 +158,25 @@ class DAQ:
 
         return a
 
-    def start_recording(self):
-
+    def start_yokogawa(self):
         if self.yoko1 is not None:
             self.yoko1.start_integral()
         if self.yoko2 is not None:
             self.yoko2.start_integral()
+
+    def stop_yokogawa(self):
+        if self.yoko1 is not None:
+            self.yoko1.stop_integral()
+        if self.yoko2 is not None:
+            self.yoko2.stop_integral()
+
+    def autorange_yokogawa(self):
+        if self.yoko1 is not None:
+            self.yoko1.auto_range_a(True)
+            self.yoko1.auto_range_v(True)
+        if self.yoko2 is not None:
+            self.yoko2.auto_range_a(True)
+            self.yoko2.auto_range_v(True)
 
     def reset_yokogawa(self):
 
@@ -170,6 +184,8 @@ class DAQ:
             self.yoko1.reset_integral()
         if self.yoko2 is not None:
             self.yoko2.reset_integral()
+
+
 
     def read_all(self):
         daq = {}
@@ -189,7 +205,11 @@ class DAQ:
 
             for key, item in self.custom_vars.items():
                 try:
-                    daq[key] = round(eval(item), 4)
+                    a=eval(item)
+                    if isinstance(a,str):
+                        daq[key]=a
+                    else:
+                        daq[key] = round(a, 4)
                 except Exception as e:
                     daq[key] = 0
                     print('Could not create custom variable {}'.format(key), e)

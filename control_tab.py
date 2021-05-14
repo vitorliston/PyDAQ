@@ -1,9 +1,10 @@
 import time
 import traceback
-
+from PyQt5.QtCore import QTimer
 from threads.arduino_thread import Arduino
 from threads.inverter_thread import Inverter
-
+from threads.rpm_acc_thread import RPM_ACC
+from CoolProp.CoolProp import PropsSI
 
 class Control:
     def __init__(self, tab, main_interface):
@@ -22,15 +23,16 @@ class Control:
         self.time = []
         self.tff = []
         self.tfz = []
-
+        self.rpm_acc_thread = None
         self.ui.connect.clicked.connect(self.connect_arduino)
         self.ui.setlogic.clicked.connect(self.set_logic)
-
+        self.ui.rpmaccconnect.clicked.connect(self.connect_rpm_acc)
+        self.ui.countdown_set.clicked.connect(self.set_countdown)
         self.ui.connectinverter.clicked.connect(self.connect_inverter)
         self.ui.controltest.clicked.connect(self.arduino_custom_command)
         self.ui.sendrpm.clicked.connect(self.custom_rpm)
 
-        self.control_variables = {'Valve': 0, 'fan_ff': 0, 'fan_fz': 0, 'RPM': 0, 'Only_fz': 0, 'Set_rpm': 0}
+        self.control_variables = {'Check_valve': 0,'Valve': 0, 'fan_ff': 0, 'fan_fz': 0, 'RPM': -1, 'Only_fz': 0, 'Set_rpm': 0,'RPM_acc_x': -1, 'RPM_acc_y': -1, 'RPM_acc_z': -1}
         self.valve_positions = {'Closed': 100, 'FF': 0, 'FF-FZ': 25, 'FZ': 50}
         self.valve_names = {}
         
@@ -48,8 +50,25 @@ class Control:
         self.first = True
         self.stats = {'FZ': 0, 'FF': 0, 'Closed': 0, 'Time': 0, 'Off_time': 0, 'Wh': 0, 'FZ_avg': [], 'FF_avg': []}
         self.cycle_finished = False
+        self.timer=None
+
+    def set_countdown(self):
+        if self.ui.countdown_time.text()!='0':
+            self.timer = QTimer()
+            self.timer.setSingleShot(True)
+            self.timer.timeout.connect(self.set_logic)
+            self.timer.start(int(float(self.ui.countdown_time.text())*3600*1000))
+        else:
+            self.timer.stop()
+            self.timer=None
+            print(self.timer)
 
     def set_logic(self):
+        if self.timer!=None:
+            self.timer.stop()
+            self.timer=None
+
+
         self.logic_vars = {}
         if not self.ui.enablelogic.isChecked():
             self.first = True
@@ -73,8 +92,19 @@ class Control:
         self.inverter_thread = Inverter(self.ui.compport.text(), int(self.ui.compbaud.text()))
         self.inverter_thread.signalStatus.connect(self.update_gui_inverter)
         self.inverter_thread.start()
-        
-        
+
+    def connect_rpm_acc(self):
+
+        if self.rpm_acc_thread is not None and self.rpm_acc_thread.ser is not None:
+            self.rpm_acc_thread.ser.close()
+            self.rpm_acc_thread.thread = False
+
+        self.rpm_acc_thread = RPM_ACC(self.ui.rpmaccport.text())
+        self.rpm_acc_thread.signalStatus.connect(self.com)
+        self.rpm_acc_thread.start()
+
+        self.ui.rpmaccstatus.setText('Connected')
+        self.ui.rpmaccstatus.setStyleSheet('color: green')
 
     def com(self, message):
 
@@ -94,6 +124,10 @@ class Control:
         elif message == 'UPDATE':
             self.update_gui_arduino()
 
+        elif message == 'RPM Failed':
+            self.ui.rpmaccstatus.setText('Error')
+            self.ui.rpmaccstatus.setStyleSheet('color: red')
+
     def connect_arduino(self):
 
         if self.arduino_thread is not None:
@@ -108,15 +142,35 @@ class Control:
 
         self.initialtime = time.time()
 
+
+
     def update_gui_arduino(self):
         #
 
         a = self.arduino_thread.variables
 
-        valve_delta, ff_fan, fz_fan = a['Valve'], int(a['fan_ff']), int(a['fan_fz'])
+        valve_delta, ff_fan, fz_fan,ck_valve = a['Valve'], int(a['fan_ff']), int(a['fan_fz']),int(a['Check_valve'])
+
+
+
+        if ck_valve != None:
+            if ck_valve == 2000:
+                self.ui.statusckvalve.setText('0')
+
+            elif ck_valve > 2000:
+
+                self.ui.statusckvalve.setText(str(float(self.ui.statusckvalve.text()) - valve_delta + 2000))
+            else:
+                self.ui.statusckvalve.setText(str(float(self.ui.statusckvalve.text()) + valve_delta))
+
+            if float(self.ui.statusckvalve.text()) < 0:
+                self.ui.statusckvalve.setText('0')
+            if float(self.ui.statusckvalve.text()) > 999:
+                self.ui.statusckvalve.setText('1')
+
 
         if valve_delta != None:
-            if valve_delta == 3000:
+            if valve_delta == 1000:
                 self.ui.statusstep.setText('0')
 
             elif valve_delta > 1000:
@@ -154,7 +208,7 @@ class Control:
             self.ui.inverterstatus.setStyleSheet('color: red')
             self.main_interface.statusbar.showMessage('Error inverter', 5000)
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + 'Error inverter')
-          
+            self.inverter_thread = None
 
         self.ui.statuscomp.setText(str(self.inverter_thread.variables['RPM']))
 
@@ -166,31 +220,34 @@ class Control:
             if pos == 'FF':
 
                 if self.cycle_finished:
-                    fz = self.stats['FZ']
-                    ff = self.stats['FF']
-                    closed = self.stats['Closed']
-                    wh_old = self.stats['Wh']
-                    kwhmo = (daq_var['Energy'] - wh_old) / 1000 * (365 / 12 * 24 * 3600) / (fz + ff + closed)
-
-                    self.ui.cyclelog.appendPlainText('RTR ' + str(round(100 * (fz + ff) / (fz + ff + closed), 2)))
-
-                    self.ui.cyclelog.appendPlainText('FF_avg ' + str(round(sum(self.stats['FF_avg']) / len(self.stats['FF_avg']), 2)))
-                    self.ui.cyclelog.appendPlainText('FZ_avg ' + str(round(sum(self.stats['FZ_avg']) / len(self.stats['FZ_avg']), 2)))
-
-                    self.ui.cyclelog.appendPlainText('Efz ' + str(round(100 * (fz) / (fz + ff), 2)))
-                    self.ui.cyclelog.appendPlainText('Eff ' + str(round(100 * (ff) / (fz + ff), 2)))
-                    self.ui.cyclelog.appendPlainText('Cycle duration [m] ' + str(round((fz + ff + closed) / 60, 2)))
-                    self.ui.cyclelog.appendPlainText('Off duration [m] ' + str(round(closed / 60, 2)))
-                    self.ui.cyclelog.appendPlainText('Cycle kwh/mo ' + str(round(kwhmo, 2)))
-                    self.stats['Wh'] = daq_var['Energy']
-                    self.stats['FZ'] = 0
-                    self.stats['FF'] = 0
-                    self.stats['Closed'] = 0
-                    self.stats['FF_avg'] = []
-                    self.stats['FZ_avg'] = []
                     self.cycle_finished = False
-                    self.ui.cyclelog.appendPlainText('___________')
+                    try:
+                        fz = self.stats['FZ']
+                        ff = self.stats['FF']
+                        closed = self.stats['Closed']
+                        wh_old = self.stats['Wh']
+                        kwhmo = (daq_var['Energy'] - wh_old)
 
+                        self.ui.cyclelog.appendPlainText('RTR ' + str(round(100 * (fz + ff) / (fz + ff + closed), 2)))
+
+                        self.ui.cyclelog.appendPlainText('FF_avg ' + str(round(sum(self.stats['FF_avg']) / len(self.stats['FF_avg']), 2)))
+                        self.ui.cyclelog.appendPlainText('FZ_avg ' + str(round(sum(self.stats['FZ_avg']) / len(self.stats['FZ_avg']), 2)))
+
+                        self.ui.cyclelog.appendPlainText('Efz ' + str(round(100 * (fz) / (fz + ff), 2)))
+                        self.ui.cyclelog.appendPlainText('Eff ' + str(round(100 * (ff) / (fz + ff), 2)))
+                        self.ui.cyclelog.appendPlainText('Cycle duration [m] ' + str(round((fz + ff + closed) / 60, 2)))
+                        self.ui.cyclelog.appendPlainText('Off duration [m] ' + str(round(closed / 60, 2)))
+                        self.ui.cyclelog.appendPlainText('Cycle kwh/mo ' + str(round(kwhmo, 2)))
+                        self.stats['Wh'] = daq_var['Energy']
+                        self.stats['FZ'] = 0
+                        self.stats['FF'] = 0
+                        self.stats['Closed'] = 0
+                        self.stats['FF_avg'] = []
+                        self.stats['FZ_avg'] = []
+
+                        self.ui.cyclelog.appendPlainText('___________')
+                    except:
+                        pass
             self.stats[pos] += daq_var['dt']
             self.stats['FF_avg'].append(daq_var['FF_air'])
             self.stats['FZ_avg'].append(daq_var['FZ_air'])
@@ -202,27 +259,36 @@ class Control:
         except Exception as e:
             print(traceback.print_exc())
 
-    def compressor_model(self, P1, P2, T1, rpm):
+    def compressor_model(self, P1, P2, T1, rpm,T_E):
 
         P1 = P1 * 100000
         P2 = P2 * 100000
         T1 += 273.15
 
         a_m, b_m, c_m, a_w, b_w, c_w = [6.291086697837868e-08, 6.337393920938311e-09, 0.5197147324693387, 279.01040522293926, 0.3903799959948377, 42040.687159235546]
-
-        m_comp = (rpm / 60) * P1 / T1 * (a_m - b_m * ((P2 / P1) ** c_m - 1))
-
         w = (a_w * T1 * ((P2 / P1) ** b_w - 1))
-
+        m_comp = (rpm / 60) * P1 / T1 * (a_m - b_m * ((P2 / P1) ** c_m - 1))
         W_comp = m_comp * (w + c_w)
 
-        return {'m_comp': round(m_comp * 3600, 3), 'W_comp': round(W_comp, 3)}
+
+        P1 = PropsSI('P','T',273.15+T_E,'Q',0,'R600A')
+
+        w = (a_w * T1 * ((P2 / P1) ** b_w - 1))
+        m_comp_temp = (rpm / 60) * P1 / T1 * (a_m - b_m * ((P2 / P1) ** c_m - 1))
+        W_comp_temp = m_comp * (w + c_w)
+        
+
+        
+
+        return {'m_comp': round(m_comp * 3600, 3), 'W_comp': round(W_comp, 3),'m_comp_temp': round(m_comp_temp * 3600, 3), 'W_comp_temp': round(W_comp_temp, 2)}
 
     def get_variables(self, daq_variables):
 
         try:
 
-
+            if self.rpm_acc_thread is not None:
+                self.control_variables.update(self.rpm_acc_thread.variables)
+                # self.ui.statuscomp.setText(self.rpm_acc_thread.variables['RPM_acc_x'])
 
             if self.arduino_thread is not None:
                 self.control_variables.update(self.arduino_thread.variables)
@@ -231,7 +297,7 @@ class Control:
             if self.inverter_thread is not None:
                 self.control_variables.update(self.inverter_thread.variables)
 
-            self.control_variables.update(self.compressor_model(daq_variables['P_suc'], daq_variables['P_disc'], daq_variables['Comp_suc'], self.control_variables['Set_rpm']))
+            self.control_variables.update(self.compressor_model(daq_variables['P_suc'], daq_variables['P_disc'], daq_variables['Comp_suc'], self.control_variables['Set_rpm'],min(daq_variables['FZ_evap_in'],daq_variables['FF_evap_in'])))
 
             self.control_variables['Valve_setting'] = self.valve_names[int(float(self.ui.statusstep.text()))]
 
@@ -244,7 +310,7 @@ class Control:
 
 
         except Exception as e:
-            print('Control tab',e)
+            print('Control tab get_variables ERROR',e)
             return {}
 
         return self.control_variables
@@ -331,48 +397,91 @@ class Control:
                 only_fz, compressor_ison, pulldown = self.external_logic(T_ff, T_fz, self.logic_vars, self.only_fz, self.compressor_ison)
 
                 print('Logic only_fz,comp', only_fz, compressor_ison)
+                #self.hybrid_control(only_fz, compressor_ison, pulldown,test)
+                self.parallel_control(only_fz, compressor_ison, pulldown,test)
 
-                if not compressor_ison:
-                    valve_pos = self.valve_positions['Closed']
-                    fan_ff = '2'
-                    fan_fz = '2'
-                    comp_rpm = '0'
-                else:
-                    if only_fz:
-                        valve_pos = self.valve_positions['FZ']
-                        fan_ff = '2'
-                        fan_fz = '1'
-                        comp_rpm = self.logic_vars['rpm']
-                    else:
-                        valve_pos = self.valve_positions['FF']
-                        fan_ff = '1'
-                        fan_fz = '2'
-                        comp_rpm = self.logic_vars['rpm']
+    def parallel_control(self,only_fz, compressor_ison, pulldown,test):
+        if not compressor_ison:
+            valve_pos = self.valve_positions['Closed']
+            fan_ff = '2'
+            fan_fz = '2'
+            comp_rpm = '0'
+            ck='1200'
+        else:
+            if only_fz:
+                valve_pos = self.valve_positions['FZ']
+                fan_ff = '2'
+                fan_fz = '1'
+                ck = '3000'
+                comp_rpm = self.logic_vars['rpm']
+            else:
+                valve_pos = self.valve_positions['FF']
+                fan_ff = '1'
+                fan_fz = '2'
+                comp_rpm = self.logic_vars['rpm']
+                ck = '1200'
+            # if pulldown:
+            #     comp_rpm = self.logic_vars['pd_rpm']
+            #     fan_ff = '1'
+            #     fan_fz = '1'
 
-                    if pulldown:
-                        comp_rpm = self.logic_vars['pd_rpm']
-                        fan_ff = '1'
-                        fan_fz = '1'
+        if self.ui.enablelogic.isChecked() or test:
+            self.first = False
+            self.delay = time.time()
+            self.only_fz = only_fz
+            self.compressor_ison = compressor_ison
+            if self.ui.enablelogic.isChecked():
+                self.logic_command(valve_pos, fan_ff, fan_fz, comp_rpm,ck)
 
-                if self.ui.enablelogic.isChecked() or test:
-                    self.first = False
-                    self.delay = time.time()
-                    self.only_fz = only_fz
-                    self.compressor_ison = compressor_ison
-                    if self.ui.enablelogic.isChecked():
-                        self.logic_command(valve_pos, fan_ff, fan_fz, comp_rpm)
 
-    def logic_command(self, valve_pos, fan_ff, fan_fz, comp_rpm):
+
+    def hybrid_control(self,only_fz, compressor_ison, pulldown,test):
+        if not compressor_ison:
+            valve_pos = self.valve_positions['Closed']
+            fan_ff = '2'
+            fan_fz = '2'
+            comp_rpm = '0'
+        else:
+            if only_fz:
+                valve_pos = self.valve_positions['FZ']
+                fan_ff = '2'
+                fan_fz = '1'
+                comp_rpm = self.logic_vars['rpm']
+            else:
+                valve_pos = self.valve_positions['FF']
+                fan_ff = '1'
+                fan_fz = '2'
+                comp_rpm = self.logic_vars['rpm']
+
+            if pulldown:
+                comp_rpm = self.logic_vars['pd_rpm']
+                fan_ff = '1'
+                fan_fz = '1'
+
+        if self.ui.enablelogic.isChecked() or test:
+            self.first = False
+            self.delay = time.time()
+            self.only_fz = only_fz
+            self.compressor_ison = compressor_ison
+            if self.ui.enablelogic.isChecked():
+                self.logic_command(valve_pos, fan_ff, fan_fz, comp_rpm)
+
+    def logic_command(self, valve_pos, fan_ff, fan_fz, comp_rpm,ck=None):
 
         rel_pos = valve_pos - float(self.ui.statusstep.text())
         if rel_pos < 0:
             rel_pos = -rel_pos + 1000
+        if ck is not None:
 
-        self.arduino_thread.command_arduino.append(str(int(rel_pos)) + ',' + fan_ff + ',' + fan_fz + ',')
+            self.arduino_thread.command_arduino.append( "{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,ck))
+            self.ui.console.appendPlainText("{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,ck))
+        else:
+            self.arduino_thread.command_arduino.append( "{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,0))
+            self.ui.console.appendPlainText("{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,0))
 
         self.inverter_thread.command_inverter = int(comp_rpm)
 
-        self.ui.console.appendPlainText(str(rel_pos) + ',' + fan_ff + ',' + fan_fz + ',' + str(comp_rpm))
+        self.ui.console.appendPlainText()
 
     def custom_command(self):
         if self.arduino_thread.command_status == 'Done':

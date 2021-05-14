@@ -36,16 +36,16 @@ class Inverter(QThread):
             self.signalStatus.emit('Error')
 
         while self.thread:
-            sleep(2)
+            sleep(1)
             self.variables['Set_rpm'] = self.inverter.current_set_speed
             if self.command_inverter is not None:
                 self.send_inverter()
 
-            else:
-                rpm = self.read_inverter_speed()
-
-                if -1 <= rpm <= 5000:
-                    self.variables['RPM'] = rpm
+            # else:
+            #     rpm = self.read_inverter_speed()
+            #
+            #     if -1 <= rpm <= 5000:
+            #         self.variables['RPM'] = rpm
 
     def send_inverter(self):
         self.signalStatus.emit('Inverter command sent ' + str(self.command_inverter))

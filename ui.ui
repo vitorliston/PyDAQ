@@ -40,7 +40,7 @@
       </property>
       <widget class="QWidget" name="tab_3">
        <attribute name="title">
-        <string>Aquisition</string>
+        <string>Aquisição</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_9">
         <property name="leftMargin">
@@ -62,7 +62,7 @@
           </property>
           <widget class="QWidget" name="tab">
            <attribute name="title">
-            <string>Plots</string>
+            <string>Gráficos</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_2">
             <property name="leftMargin">
@@ -135,7 +135,7 @@
                    <property name="bottomMargin">
                     <number>0</number>
                    </property>
-                   <item row="2" column="0" colspan="2">
+                   <item row="2" column="0" colspan="2" alignment="Qt::AlignLeft">
                     <widget class="QGroupBox" name="groupBox_5">
                      <property name="minimumSize">
                       <size>
@@ -144,7 +144,7 @@
                       </size>
                      </property>
                      <property name="title">
-                      <string>Plot variables</string>
+                      <string>Váriaveis</string>
                      </property>
                      <layout class="QGridLayout" name="gridLayout_5">
                       <property name="leftMargin">
@@ -229,7 +229,7 @@
                      <property name="minimumSize">
                       <size>
                        <width>200</width>
-                       <height>163</height>
+                       <height>190</height>
                       </size>
                      </property>
                      <property name="frameShape">
@@ -245,7 +245,7 @@
                       <item row="0" column="1">
                        <widget class="QLineEdit" name="savefilepath"/>
                       </item>
-                      <item row="3" column="0" colspan="2">
+                      <item row="3" column="0" colspan="2" alignment="Qt::AlignLeft">
                        <widget class="QGroupBox" name="groupBox_6">
                         <property name="minimumSize">
                          <size>
@@ -253,20 +253,35 @@
                           <height>114</height>
                          </size>
                         </property>
-                        <property name="maximumSize">
-                         <size>
-                          <width>175</width>
-                          <height>16777215</height>
-                         </size>
-                        </property>
                         <property name="title">
-                         <string>Plot controls</string>
+                         <string>Gráficos</string>
                         </property>
                         <layout class="QGridLayout" name="gridLayout_14">
-                         <item row="1" column="0">
-                          <widget class="QPushButton" name="bclearplots">
+                         <item row="0" column="1">
+                          <widget class="QPushButton" name="bcloseall">
                            <property name="text">
-                            <string>Clear</string>
+                            <string>Fechar todos</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QPushButton" name="bsavecolors">
+                           <property name="text">
+                            <string>Salvar gráfic.</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QPushButton" name="reorganize">
+                           <property name="text">
+                            <string>Reorganizar</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QPushButton" name="bloadcolors">
+                           <property name="text">
+                            <string>Carreg. gráfic.</string>
                            </property>
                           </widget>
                          </item>
@@ -274,40 +289,19 @@
                           <widget class="QPushButton" name="addplot">
                            <property name="maximumSize">
                             <size>
-                             <width>75</width>
+                             <width>100</width>
                              <height>23</height>
                             </size>
                            </property>
                            <property name="text">
-                            <string>Add plot</string>
+                            <string>Adic. gráfico</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="0" column="1">
-                          <widget class="QPushButton" name="bcloseall">
+                         <item row="1" column="0">
+                          <widget class="QPushButton" name="bclearplots">
                            <property name="text">
-                            <string>Close all</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QPushButton" name="reorganize">
-                           <property name="text">
-                            <string>Reorganize</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QPushButton" name="bsavecolors">
-                           <property name="text">
-                            <string>Save plots</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QPushButton" name="bloadcolors">
-                           <property name="text">
-                            <string>Load plots</string>
+                            <string>Limpar</string>
                            </property>
                           </widget>
                          </item>
@@ -317,7 +311,7 @@
                       <item row="0" column="0">
                        <widget class="QPushButton" name="checksavefile">
                         <property name="text">
-                         <string>Record</string>
+                         <string>Gravar</string>
                         </property>
                         <property name="checkable">
                          <bool>true</bool>
@@ -335,7 +329,7 @@
                         <item row="0" column="0">
                          <widget class="QLabel" name="label_2">
                           <property name="text">
-                           <string>Time</string>
+                           <string>Tempo de gravação</string>
                           </property>
                          </widget>
                         </item>
@@ -385,60 +379,7 @@
             <property name="horizontalSpacing">
              <number>30</number>
             </property>
-            <item row="0" column="2" alignment="Qt::AlignTop">
-             <widget class="QGroupBox" name="groupBox">
-              <property name="maximumSize">
-               <size>
-                <width>300</width>
-                <height>300</height>
-               </size>
-              </property>
-              <property name="title">
-               <string>Instrument scanner</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_3">
-               <item row="1" column="0" alignment="Qt::AlignRight">
-                <widget class="QPushButton" name="bscan_instrument">
-                 <property name="text">
-                  <string>Scan</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QPlainTextEdit" name="instrument_scanner_text"/>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="0" column="3">
-             <widget class="QFrame" name="frame">
-              <property name="frameShape">
-               <enum>QFrame::StyledPanel</enum>
-              </property>
-              <property name="frameShadow">
-               <enum>QFrame::Raised</enum>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="2">
-             <widget class="QGroupBox" name="groupBox_7">
-              <property name="maximumSize">
-               <size>
-                <width>300</width>
-                <height>16777215</height>
-               </size>
-              </property>
-              <property name="title">
-               <string>Log</string>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_8">
-               <item row="0" column="0">
-                <widget class="QPlainTextEdit" name="log_text"/>
-               </item>
-              </layout>
-             </widget>
-            </item>
-            <item row="0" column="0" rowspan="2" alignment="Qt::AlignLeft">
+            <item row="0" column="0" rowspan="2">
              <widget class="QGroupBox" name="groupBox_4">
               <property name="minimumSize">
                <size>
@@ -465,6 +406,13 @@
                   <enum>QFrame::Raised</enum>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_7">
+                  <item row="0" column="1">
+                   <widget class="QPushButton" name="bstopdaq">
+                    <property name="text">
+                     <string>Stop</string>
+                    </property>
+                   </widget>
+                  </item>
                   <item row="0" column="0">
                    <widget class="QPushButton" name="bstartdaq">
                     <property name="maximumSize">
@@ -475,13 +423,6 @@
                     </property>
                     <property name="text">
                      <string>Start </string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QPushButton" name="bstopdaq">
-                    <property name="text">
-                     <string>Stop</string>
                     </property>
                    </widget>
                   </item>
@@ -520,7 +461,7 @@
                  </layout>
                 </widget>
                </item>
-               <item row="1" column="0">
+               <item row="1" column="0" colspan="2">
                 <widget class="QTabWidget" name="tabWidget_3">
                  <property name="minimumSize">
                   <size>
@@ -651,6 +592,114 @@
               </layout>
              </widget>
             </item>
+            <item row="0" column="2" rowspan="2" alignment="Qt::AlignLeft">
+             <widget class="QFrame" name="frame_2">
+              <property name="frameShape">
+               <enum>QFrame::StyledPanel</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_19">
+               <item row="1" column="0">
+                <widget class="QGroupBox" name="groupBox">
+                 <property name="maximumSize">
+                  <size>
+                   <width>300</width>
+                   <height>300</height>
+                  </size>
+                 </property>
+                 <property name="title">
+                  <string>Instrument scanner</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_3">
+                  <item row="1" column="0" alignment="Qt::AlignRight">
+                   <widget class="QPushButton" name="bscan_instrument">
+                    <property name="text">
+                     <string>Scan</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0">
+                   <widget class="QPlainTextEdit" name="instrument_scanner_text"/>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QGroupBox" name="groupBox_7">
+                 <property name="maximumSize">
+                  <size>
+                   <width>300</width>
+                   <height>500</height>
+                  </size>
+                 </property>
+                 <property name="title">
+                  <string>Log</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_8">
+                  <item row="0" column="0">
+                   <widget class="QPlainTextEdit" name="log_text"/>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item row="0" column="0">
+                <widget class="QGroupBox" name="groupBox_2">
+                 <property name="title">
+                  <string>Yokogawa controls</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_18">
+                  <item row="0" column="2">
+                   <widget class="QPushButton" name="stopintegral">
+                    <property name="text">
+                     <string>Stop integral</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QPushButton" name="startintegral">
+                    <property name="text">
+                     <string>Start integral</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="2">
+                   <widget class="QPushButton" name="autorange">
+                    <property name="maximumSize">
+                     <size>
+                      <width>100</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Autorange </string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QPushButton" name="resetintegral">
+                    <property name="text">
+                     <string>Reset integral</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="QFrame" name="frame">
+              <property name="frameShape">
+               <enum>QFrame::StyledPanel</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
           <widget class="QWidget" name="tab_7">
@@ -669,7 +718,7 @@
       </widget>
       <widget class="QWidget" name="control">
        <attribute name="title">
-        <string>Control</string>
+        <string>Controle</string>
        </attribute>
       </widget>
       <widget class="QWidget" name="pids">

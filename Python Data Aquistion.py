@@ -35,6 +35,11 @@ class MainWindow(QMainWindow):
         self.bloadcolors.clicked.connect(self.load_plots)
         self.bsavecolors.clicked.connect(self.save_plots)
 
+        self.autorange.clicked.connect(self.autorange_yokos)
+        self.resetintegral.clicked.connect(self.reset_yokos)
+        self.startintegral.clicked.connect(self.start_yokos)
+        self.stopintegral.clicked.connect(self.stop_yokos)
+
         self.bopencustom.clicked.connect(self.open_curves)
         self.bsavecustom.clicked.connect(self.save_custom)
 
@@ -45,6 +50,7 @@ class MainWindow(QMainWindow):
         self.checksavefile.clicked.connect(self.record_test)
         self.bsavechangesset.clicked.connect(self.save_settings)
         self.bsavechangescurve.clicked.connect(self.save_curves)
+      #  self.linkaxis.clicked.connect(self.link_plots)
         self.plots_colors={}
 
         self.daq=DAQ()
@@ -68,10 +74,12 @@ class MainWindow(QMainWindow):
         self.settings_file='config.txt'
         self.curves_file='curves.txt'
         self.custom_file = 'custom_vars.txt'
-        self.save_thread=None
+        self.load_config_files()
+    def load_config_files(self):
+        self.save_thread = None
         self.settings_model = QStandardItemModel(self)
 
-        self.write_order=[]
+        self.write_order = []
         self.tableView.setModel(self.settings_model)
 
         try:
@@ -87,13 +95,30 @@ class MainWindow(QMainWindow):
         except:
             pass
 
-        self.genericthread=None
-        self.save_file='test.csv'
-        self.record=False
+        self.genericthread = None
+        self.save_file = 'test.csv'
+        self.record = False
         try:
-            self.table_loadCsv(self.settings_file,self.settings_model,['Channel','Name','Curve'])
+            self.table_loadCsv(self.settings_file, self.settings_model, ['Channel', 'Name', 'Curve'])
         except:
             pass
+
+
+
+    def autorange_yokos(self):
+        if self.daq_thread is not None:
+            self.daq_thread.autorange=True
+
+    def stop_yokos(self):
+        if self.daq_thread is not None:
+            self.daq_thread.stop_integral=True
+    def start_yokos(self):
+        if self.daq_thread is not None:
+            self.daq_thread.start_integral=True
+    def reset_yokos(self):
+        if self.daq_thread is not None:
+            self.daq_thread.reset_integral=True
+
     def save_plots(self):
         i=0
         self.plots_colors={}
@@ -141,7 +166,7 @@ class MainWindow(QMainWindow):
         save = self.checksavefile.isChecked()
         if save:
             if self.daq_thread is not None:
-                self.daq_thread.daq.start_recording()
+
                 self.checksavefile.setText('Recording')
                 self.savefilepath.setDisabled(True)
                 path = self.savefilepath.text()
@@ -150,7 +175,7 @@ class MainWindow(QMainWindow):
                     path+='.csv'
 
                 self.save_thread = save_thread(path,self.write_order)
-
+                self.daq_thread.daq.start_yokogawa()
                 self.save_thread.start()
 
         else:
@@ -286,7 +311,30 @@ class MainWindow(QMainWindow):
 
                 print('Could not plot variable',e)
 
-        self.update_plots()
+        #self.update_plots()
+
+    # def link_plots(self):
+    #     if self.linkaxis.isChecked():
+    #         if len(self.mdi.subWindowList()) > 1:
+    #             first=True
+    #
+    #             for subwin in self.mdi.subWindowList():
+    #                 if first:
+    #                     plot=subwin.plotlist[0]['Plot']
+    #                     plot.vb.enableAutoRange()
+    #                     first=False
+    #                 else:
+    #                     subwin.plotlist[0]['Plot'].setXLink(plot)
+    #     else:
+    #         if len(self.mdi.subWindowList()) > 1:
+    #
+    #
+    #             for subwin in self.mdi.subWindowList():
+    #
+    #                     subwin.plotlist[0]['Plot'].setXLink(subwin.plotlist[0]['Plot'].vb)
+
+
+
     def update_plots(self):
         for subwin in self.mdi.subWindowList():
             for subplot in subwin.plotlist:
@@ -358,12 +406,14 @@ class MainWindow(QMainWindow):
         self.mdi.addSubWindow(sub)
 
         self.focusedsub = sub
+       # self.link_plots()
         sub.show()
 
         self.reorgsubs()
 
     def close_plots(self):
         self.mdi.closeAllSubWindows()
+        self.reorgsubs()
 
     def gradient_color(self,x):
 
@@ -432,6 +482,7 @@ class MainWindow(QMainWindow):
 
     def start_daq(self):
         try:
+            self.load_config_files()
             self.daq.initialize(self.settings_file, self.curves_file,self.custom_file)
             self.daqstatus.setText('Running')
             self.first_output = True
@@ -444,6 +495,7 @@ class MainWindow(QMainWindow):
             self.daq_thread.signalStatus.connect(self.update_all)
             self.daq_thread.save_file=self.savefilepath.text()
             self.close_plots()
+
 
         except Exception as e:
 
@@ -480,8 +532,10 @@ def run_DataViewer():
     app = QApplication(sys.argv)
     a = MainWindow()
     a.add_variables(['Time','a'])
-    a.variables['Time']=list(range(int(50000)))
-    a.variables['a'] = list(range(50000))
+    a.variables['Time']=list(range(int(1000)))
+    a.variables['a'] = list([random.randint(0,1000) for i in range(1000)])
+    # a.variables['b'] =  list([random.randint(0,1000) for i in range(1000)])
+    # a.variables['c'] = list([random.randint(0,1000) for i in range(1000)])
 
     a.update_plots()
     # a.variables['Time'] =[1,2,3,4,5,6,7,8,9]

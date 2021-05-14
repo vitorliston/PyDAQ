@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QMainWindow
 
 PyQt5.QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 from Connect import connect
-
+import serial
 
 class Arduino(QThread):
     signalStatus = pyqtSignal(str)
@@ -19,14 +19,14 @@ class Arduino(QThread):
 
         self.thread = True
 
-        self.variables = {'Valve': 0, 'fan_ff': 0, 'fan_fz': 0}
-        self.names = {'V': 'Valve', 'FF': 'fan_ff', 'FZ': 'fan_fz'}
+        self.variables = {'Valve': 0, 'fan_ff': 0, 'fan_fz': 0,'Check_valve':0}
+        self.names = {'V': 'Valve', 'FF': 'fan_ff', 'FZ': 'fan_fz','CK':'Check_valve'}
         self.serialConnection = None
 
     @QtCore.pyqtSlot()
     def run(self):
         try:
-            self.serialConnection = connect('USB-SERIAL CH340')
+            self.serialConnection = serial.Serial('com10',9600,timeout=1)
         except:
             self.serialConnection = None
 
@@ -50,7 +50,7 @@ class Arduino(QThread):
                             self.signalStatus.emit('UPDATE')
 
 
-                    sleep(1)
+                    sleep(0.5)
 
                 except:
                     print(traceback.print_exc())

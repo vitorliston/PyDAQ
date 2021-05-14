@@ -87,7 +87,9 @@ class PlotCurveItem(pg.PlotCurveItem):
 
 
         self.spin=QSpinBox()
-        self.spin.editingFinished.connect(self.moving_average)
+        self.spin.setSingleStep(5)
+        self.spin.setMaximum(100)
+        self.spin.valueChanged.connect(self.moving_average)
         a.setDefaultWidget(self.spin)
         self.sub_menu.addAction(a)
 
@@ -105,7 +107,7 @@ class PlotCurveItem(pg.PlotCurveItem):
             self.ma = value
             if value>1:
                 self.do_ma=True
-                self.yData_ma=self.yData_unaltered[:value-1]+list(self._moving_average(self.yData_unaltered,value))
+                self.yData_ma=[sum(self.yData_unaltered[:value-1])/len(self.yData_unaltered[:value-1])]*len(self.yData_unaltered[:value-1])+list(self._moving_average(self.yData_unaltered,value))
                 self.setData_ma(self.xData, self.yData_ma)
             else:
                 self.do_ma = False
@@ -343,7 +345,7 @@ class PlotWindow(QMdiSubWindow):
                             }
                         """)
         plot = PlotWidget()
-
+        plot.visibleRange()
         plot.setMouseTracking(True)
         plot.scene().sigMouseMoved.connect(partial(self.tool_tip, plot.getPlotItem()))
 
@@ -361,7 +363,7 @@ class PlotWindow(QMdiSubWindow):
         # self.fg.setRowStretch(self.fg.rowCount() - 1, 2)
         plot.plotItem.vb.menu = self.menu
 
-        plot.getPlotItem().getAxis('left').setWidth(40)
+        plot.getPlotItem().getAxis('left').setWidth(45)
 
         self.setfocused()
         self.focused = self.plotlist[0]
@@ -399,7 +401,7 @@ class PlotWindow(QMdiSubWindow):
                     y = item.yData[ind] + (mousePoint1.x() - item.xData[ind]) * (item.yData[ind + 1] - item.yData[ind]) / (item.xData[ind + 1] - item.xData[ind])
 
                     show = True
-                    self.plottooltip.setText( ' '+item.name()+' '+ str(round(y, 2)) + '\n Avg ' + str(round(item.get_avg(), 2)) + '\n X ' + str(round(item.xData[ind - 1], 2)))
+                    self.plottooltip.setText( ' '+item.name()+' '+ str(round(y, 2)) + '\n Avg ' + str(round(item.get_avg(), 2)) + '\n Current ' + str(round(item.yData[1], 2)))
 
 
                     self.plottooltip.setPos(mousePoint1.x(), mousePoint1.y())

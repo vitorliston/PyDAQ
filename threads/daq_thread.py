@@ -17,6 +17,10 @@ class daq_thread(QThread):
         self.write_header = True
         self.write_order = []
         self.record_time = 0
+        self.autorange=False
+        self.start_integral = False
+        self.stop_integral = False
+        self.reset_integral = False
 
         self.file = None
         self.path = None
@@ -27,10 +31,24 @@ class daq_thread(QThread):
         delta = -self.read_interval
 
         self.daq.reset_yokogawa()
+        self.daq.autorange_yokogawa()
+
 
         last_time=0
 
         while self.read:
+            if self.autorange:
+                self.daq.autorange_yokogawa()
+                self.autorange=False
+            if self.start_integral:
+                self.daq.start_yokogawa()
+                self.start_integral=False
+            if self.stop_integral:
+                self.daq.stop_yokogawa()
+                self.stop_integral=False
+            if self.reset_integral:
+                self.daq.reset_yokogawa()
+                self.reset_integral=False
 
             self.msleep(int((max(self.read_interval + delta, 0)) * 1000))
 

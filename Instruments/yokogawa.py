@@ -19,8 +19,8 @@ class Yokogawa:
         self.normal_output=['V1','V2','V3','V_SUM','A1','A2','A3','A_SUM','W1','W2','W3','W_SUM']
         self.integral_output = ['W1','W2','W3','W_SUM','WH1','WH2','WH3','WH_SUM','AH1','AH2','AH3','AH_SUM','H','M','S']
 
-        self.auto_range_v(True)
-        self.auto_range_a(True)
+        # self.auto_range_v(True)
+        # self.auto_range_a(True)
 
     def read_normal(self):
 
@@ -32,8 +32,8 @@ class Yokogawa:
         for key,val in resp.items():
 
             if val>1e20:
-                self.auto_range_v(True)
-                self.auto_range_a(True)
+                # self.auto_range_v(True)
+                # self.auto_range_a(True)
                 resp[key]=0
 
         return resp
@@ -52,14 +52,14 @@ class Yokogawa:
         return resp
 
     def auto_range_v(self,on):
-
+        print('Auto range V {} {}'.format(self.identifier,on))
         if on:
             self.device.write(":VOLTAGE:AUTO ON")
         else:
             self.device.write(":VOLTAGE:AUTO OFF")
 
     def auto_range_a(self,on):
-
+        print('Auto range A {} {}'.format(self.identifier, on))
         if on:
             self.device.write(":CURRENT:AUTO ON")
         else:
@@ -69,15 +69,16 @@ class Yokogawa:
         self.device.write(":CURRENT:RANGE {}A".format(range))
 
     def reset_integral(self):
-        print('Reset integral {}'.format(self.identifier))
+        
         self.stop_integral()
         self.device.write(":INTEGRATE:RESET")
-
+        print('Reset integral {}'.format(self.identifier))
 
     def start_integral(self):
         print('Start integral {}'.format(self.identifier))
         self.device.write(":INTEGRATE:START")
     def stop_integral(self):
+        print('Stop integral {}'.format(self.identifier))
         self.device.write(":INTEGRATE:STOP")
     def query(self,command):
         res=self.device.query(command)
@@ -85,3 +86,7 @@ class Yokogawa:
     def write(self,command):
         res=self.device.write(command)
         return res
+
+if __name__=="__main__":
+    a=Yokogawa('GPIB0::2::INSTR')   
+    a.auto_range_a(True)

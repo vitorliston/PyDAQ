@@ -1,6 +1,6 @@
 import os
 import sys
-
+import traceback
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtWidgets, uic
 from PyQt5.QtCore import *
@@ -13,16 +13,34 @@ from Aquisition import DAQ
 from plot import PlotWindow, PlotCurveItem
 from pid_tab import pid_tab
 import matplotlib.cm as cm
-
+import sys
 QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 import random
 import csv
 import time
+from datetime import datetime
+
+class system_out:
+    def __init__(self,stdout):
+        self.stdout=stdout
+        self.file = open('log.txt',"w")
+    def write(self,message):
+
+
+        self.stdout.write(message)
+        if message!='\n':
+            self.file.write(datetime.now().strftime("%d/%m %H:%M:%S "))
+            self.file.write(message+'\n')
+    def flush(self):
+        self.file.flush()
+        self.stdout.flush()
 
 class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
+
+        sys.stdout=system_out(sys.stdout)
 
         uic.loadUi(os.path.dirname(__file__) + '/ui.ui', self)
         uic.loadUi(os.path.dirname(__file__) + '/control.ui', self.control)
@@ -34,7 +52,7 @@ class MainWindow(QMainWindow):
 
         self.bloadcolors.clicked.connect(self.load_plots)
         self.bsavecolors.clicked.connect(self.save_plots)
-
+        self.exportvar.clicked.connect(self.export_var)
         self.autorange.clicked.connect(self.autorange_yokos)
         self.resetintegral.clicked.connect(self.reset_yokos)
         self.startintegral.clicked.connect(self.start_yokos)
@@ -75,6 +93,12 @@ class MainWindow(QMainWindow):
         self.curves_file='curves.txt'
         self.custom_file = 'custom_vars.txt'
         self.load_config_files()
+    def export_var(self):
+        with open("Saved_files/exported_vars.csv", "w") as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(self.variables.keys())
+            writer.writerows(zip(*self.variables.values()))
+
     def load_config_files(self):
         self.save_thread = None
         self.settings_model = QStandardItemModel(self)
@@ -308,7 +332,7 @@ class MainWindow(QMainWindow):
                             del self.focusedsub.focused['Ploted'][item_name]
 
             except Exception as e:
-
+                print(traceback.format_exc())
                 print('Could not plot variable',e)
 
         #self.update_plots()
@@ -338,20 +362,22 @@ class MainWindow(QMainWindow):
     def update_plots(self):
         for subwin in self.mdi.subWindowList():
             for subplot in subwin.plotlist:
-                a=''
+                # a=''
                 for curve in subplot['Plot'].curves:
                     if isinstance(curve, PlotCurveItem):
                         item_name = curve.name()
                         if len(self.variables[item_name]) > 0:
                             curve.setData(self.variables['Time'], self.variables[item_name])
                             curve.get_avg()
-                            a+=item_name+''+str(self.variables[item_name][-1])
+                            # a+=item_name+''+str(self.variables[item_name][-1])
 
 
                 for row in subplot['Plot'].legend.items:
                     name=row[1].text.split(' ')[0]
                     if len(self.variables[name])>0:
-                        row[1].setText(name+' '+str(self.variables[name][-1]),size='8')
+
+                        text="{} {}".format(name,self.variables[name][-1])
+                        row[1].setText(text,size='10')
 
 
 

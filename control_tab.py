@@ -17,13 +17,14 @@ class Control:
         self.connected = False
 
         self.millis = 0
-
+        self.custom_valve_control=False
         self.serialport = None
 
         self.time = []
         self.tff = []
         self.tfz = []
         self.rpm_acc_thread = None
+        self.ui.testbutton.clicked.connect(self.test)
         self.ui.connect.clicked.connect(self.connect_arduino)
         self.ui.setlogic.clicked.connect(self.set_logic)
         self.ui.rpmaccconnect.clicked.connect(self.connect_rpm_acc)
@@ -32,10 +33,13 @@ class Control:
         self.ui.controltest.clicked.connect(self.arduino_custom_command)
         self.ui.sendrpm.clicked.connect(self.custom_rpm)
 
-        self.control_variables = {'Check_valve': 0,'Valve': 0, 'fan_ff': 0, 'fan_fz': 0, 'RPM': -1, 'Only_fz': 0, 'Set_rpm': 0,'RPM_acc_x': -1, 'RPM_acc_y': -1, 'RPM_acc_z': -1}
-        self.valve_positions = {'Closed': 100, 'FF': 0, 'FF-FZ': 25, 'FZ': 50}
+        self.control_variables = {'Pumpout':0,'Check_valve': 0,'Valve': 0, 'fan_ff': 0, 'fan_fz': 0, 'RPM': -1, 'Only_fz': 0, 'Set_rpm': 0}#,'RPM_acc_x': -1, 'RPM_acc_y': -1, 'RPM_acc_z': -1}
+
+        # self.valve_positions = {'Closed': 100, 'FF': 0, 'FF-FZ': 25, 'FZ': 50}
+        self.valve_positions = {'Closed': 100, 'FF': 50, 'FF-FZ': 25, 'FZ': 0}
+
         self.valve_names = {}
-        
+
         for key, val in self.valve_positions.items():
             self.valve_names[val] = key
 
@@ -43,15 +47,16 @@ class Control:
 
         self.only_fz = False
         self.compressor_ison = False
-        self.logic_vars = {'fz_max': 0, 'fz_min': 0, 'fz_tol': 0, 'ff_max': 0, 'ff_min': 0, 'ff_tol': 0, 'rpm': 0, 'pd_rpm': 0}
+        self.logic_vars = {'fz_max': 0, 'fz_min': 0, 'fz_tol': 0, 'ff_max': 0, 'ff_min': 0, 'ff_tol': 0, 'rpm': 0, 'pd_rpm': 0,'pumpout':0,'dp':0,'logic':0}
         self.external_logic = None
         self.delay = 0
         self.roots = [1, 1]
         self.first = True
-        self.stats = {'FZ': 0, 'FF': 0, 'Closed': 0, 'Time': 0, 'Off_time': 0, 'Wh': 0, 'FZ_avg': [], 'FF_avg': []}
+        self.stats = {'FZ': 0, 'FF': 0, 'Closed': 0, 'Time': 0, 'Off_time': 0, 'Wh': 0, 'FZ_avg': [], 'FF_avg': [],'Off':0,'Pumpout':0}
         self.cycle_finished = False
         self.timer=None
-
+        self.ready=True
+        self.pumpout=False
     def set_countdown(self):
         if self.ui.countdown_time.text()!='0':
             self.timer = QTimer()
@@ -149,24 +154,26 @@ class Control:
 
         a = self.arduino_thread.variables
 
-        valve_delta, ff_fan, fz_fan,ck_valve = a['Valve'], int(a['fan_ff']), int(a['fan_fz']),int(a['Check_valve'])
-
-
+        valve_delta, ff_fan, fz_fan,ck_valve,pp = a['Valve'], int(a['fan_ff']), int(a['fan_fz']),int(a['Check_valve']),int(a['Pumpout'])
+        if a['Pumpout']==0:
+            self.pumpout=False
+        else:
+            self.pumpout=True
 
         if ck_valve != None:
-            if ck_valve == 2000:
-                self.ui.statusckvalve.setText('0')
+            if ck_valve < 2000:
+                self.ui.statusckvalve.setText(str(float(self.ui.statusckvalve.text()) + ck_valve))
 
             elif ck_valve > 2000:
 
-                self.ui.statusckvalve.setText(str(float(self.ui.statusckvalve.text()) - valve_delta + 2000))
-            else:
-                self.ui.statusckvalve.setText(str(float(self.ui.statusckvalve.text()) + valve_delta))
+                self.ui.statusckvalve.setText(str(float(self.ui.statusckvalve.text()) - ck_valve + 2000))
 
             if float(self.ui.statusckvalve.text()) < 0:
+
                 self.ui.statusckvalve.setText('0')
-            if float(self.ui.statusckvalve.text()) > 999:
-                self.ui.statusckvalve.setText('1')
+
+            if float(self.ui.statusckvalve.text()) > 250:
+                self.ui.statusckvalve.setText('250')
 
 
         if valve_delta != None:
@@ -215,44 +222,63 @@ class Control:
     def update_stats(self, daq_var):
 
         try:
-            pos = self.valve_names[int(float(self.ui.statusstep.text()))]
+            fan_ff=daq_var['fan_ff']
+            fan_fz=daq_var['fan_fz']
 
-            if pos == 'FF':
+            pos = self.valve_names[int(float(self.ui.statusstep.text()))]
+            pp=daq_var['Pumpout']
+            if self.compressor_ison:
 
                 if self.cycle_finished:
                     self.cycle_finished = False
                     try:
                         fz = self.stats['FZ']
                         ff = self.stats['FF']
-                        closed = self.stats['Closed']
+                        off = self.stats['Off']
+                        pp=self.stats['Pumpout']
                         wh_old = self.stats['Wh']
-                        kwhmo = (daq_var['Energy'] - wh_old)
+                        dur=(fz + ff + off+pp) / 60
+                        kwhmo = (1/1000)*(daq_var['Energy'] - wh_old)/(dur/60)*24*(365/12)
 
-                        self.ui.cyclelog.appendPlainText('RTR ' + str(round(100 * (fz + ff) / (fz + ff + closed), 2)))
+                        self.ui.cyclelog.appendPlainText('RTR ' + str(round(100 * (fz + ff+pp) / (fz + ff+pp + off), 2)))
 
                         self.ui.cyclelog.appendPlainText('FF_avg ' + str(round(sum(self.stats['FF_avg']) / len(self.stats['FF_avg']), 2)))
                         self.ui.cyclelog.appendPlainText('FZ_avg ' + str(round(sum(self.stats['FZ_avg']) / len(self.stats['FZ_avg']), 2)))
 
                         self.ui.cyclelog.appendPlainText('Efz ' + str(round(100 * (fz) / (fz + ff), 2)))
                         self.ui.cyclelog.appendPlainText('Eff ' + str(round(100 * (ff) / (fz + ff), 2)))
-                        self.ui.cyclelog.appendPlainText('Cycle duration [m] ' + str(round((fz + ff + closed) / 60, 2)))
-                        self.ui.cyclelog.appendPlainText('Off duration [m] ' + str(round(closed / 60, 2)))
-                        self.ui.cyclelog.appendPlainText('Cycle kwh/mo ' + str(round(kwhmo, 2)))
+                        self.ui.cyclelog.appendPlainText('Duration [m] ' + str(round(dur, 2)))
+                        self.ui.cyclelog.appendPlainText('Pumpout [m] ' + str(round(self.stats['Pumpout']/60, 2)))
+                        self.ui.cyclelog.appendPlainText('Off  [m] ' + str(round(off / 60, 2)))
+                        self.ui.cyclelog.appendPlainText('kwh/mo ' + str(round(kwhmo, 2)))
                         self.stats['Wh'] = daq_var['Energy']
                         self.stats['FZ'] = 0
                         self.stats['FF'] = 0
-                        self.stats['Closed'] = 0
+                        self.stats['Off'] = 0
                         self.stats['FF_avg'] = []
                         self.stats['FZ_avg'] = []
-
+                        self.stats['Pumpout']=0
                         self.ui.cyclelog.appendPlainText('___________')
                     except:
                         pass
-            self.stats[pos] += daq_var['dt']
+
+            if not self.compressor_ison:
+                self.stats['Off'] += daq_var['dt']
+            else:
+                if pp==1:
+                    self.stats['Pumpout'] += daq_var['dt']
+                if fan_fz==1:
+                    self.stats['FZ'] += daq_var['dt']
+                if fan_ff==1:
+                    self.stats['FF'] += daq_var['dt']
+
+
+
+
             self.stats['FF_avg'].append(daq_var['FF_air'])
             self.stats['FZ_avg'].append(daq_var['FZ_air'])
 
-            if pos == 'Closed':
+            if not self.compressor_ison:
                 self.cycle_finished = True
 
 
@@ -294,40 +320,50 @@ class Control:
                 self.control_variables.update(self.arduino_thread.variables)
 
 
+
             if self.inverter_thread is not None:
                 self.control_variables.update(self.inverter_thread.variables)
 
             self.control_variables.update(self.compressor_model(daq_variables['P_suc'], daq_variables['P_disc'], daq_variables['Comp_suc'], self.control_variables['Set_rpm'],min(daq_variables['FZ_evap_in'],daq_variables['FF_evap_in'])))
 
+            self.control_variables['CKV_setting'] = float(self.ui.statusckvalve.text())
             self.control_variables['Valve_setting'] = self.valve_names[int(float(self.ui.statusstep.text()))]
 
             self.control_variables.update(self.logic_vars)
+            self.control(daq_variables['FF_air'], daq_variables['FZ_air'])
 
-            self.process_data(daq_variables['FF_air'], daq_variables['FZ_air'])
+
+            if self.custom_valve_control and self.ui.dpcontrol.isChecked() and self.ui.enablelogic.isChecked():
+                self.parallel_ck_valve(daq_variables['P_fz'], daq_variables['P_suc'])
+
+
             if self.ui.enablelogic.isChecked():
                 self.update_stats(daq_variables)
 
 
 
         except Exception as e:
-            print('Control tab get_variables ERROR',e)
+            self.ui.errorconsole.appendPlainText('Control tab get_variables ERROR {}'.format(e))
+
             return {}
 
         return self.control_variables
 
-    def process_data(self, Tff, Tfz):
-        self.tff.append(Tff)
-        self.tfz.append(Tfz)
+    def parallel_ck_valve(self,P_fz,P_suc,test=False):
+        if not self.pumpout and int(float(self.ui.statusckvalve.text()))==0:
+            self.arduino_thread.command_arduino.append( "{},{},{},{},{}".format(0,0, 0,2015,0))
+            # if P_fz-P_suc>self.logic_vars['dp']:
+            #
+            #     if int(float(self.ui.statusckvalve.text()))<=50:
+            #
+            #         self.arduino_thread.command_arduino.append( "{},{},{},{},{}".format(0,0, 0,10,0))
+            #
+            # if P_suc-P_fz>self.logic_vars['dp']:
+            #
+            #     if int(float(self.ui.statusckvalve.text())) >=5:
+            #         self.arduino_thread.command_arduino.append( "{},{},{},{},{}".format(0,0, 0,2005,0))
 
-        self.control(self.tff[-1], self.tfz[-1])
-        self.ui.statusfftemp.setText(str(round(self.tff[-1], 2)))
-        self.ui.statusfztemp.setText(str(round(self.tfz[-1], 2)))
-        try:
-            self.ui.statuscomp.setText(str(self.inverter_thread.variables['RPM']))
-        except:
-            pass
 
-        return self.tff[-1], self.tfz[-1]
 
     def arduino_custom_command(self):
         text = self.ui.controltest_text.text()
@@ -339,9 +375,24 @@ class Control:
             self.arduino_thread.command_arduino.append(text + '\r')
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + text)
 
+    def test(self):
+        a=self.ui.testfield.text().split(',')
+        self.control(float(a[0]),float(a[1]),True)
+
+
+
     def control(self, T_ff, T_fz, test=False):
-        logic = 2
-        if self.external_logic is not None and time.time() - self.delay > 120 or test:
+        try:
+            self.ui.statuscomp.setText(str(self.inverter_thread.variables['RPM']))
+        except:
+            pass
+
+        self.ui.statusfftemp.setText(str(round(T_ff, 2)))
+        self.ui.statusfztemp.setText(str(round(T_fz, 2)))
+
+        logic=int(self.logic_vars['logic'])
+
+        if self.external_logic is not None and time.time() - self.delay > 60 or test:
             roots = [0, 0]
             if logic == 1:
                 if not self.compressor_ison:
@@ -390,98 +441,127 @@ class Control:
                 else:
                     roots[1] = 1
 
+            elif logic == 3:
+
+                if not self.compressor_ison or not self.only_fz:
+                    if T_fz - self.logic_vars['fz_max'] > 0:
+
+                        roots[0] = 1
+                    else:
+                        roots[0] = -1
+
+                else:
+                    if T_fz - self.logic_vars['fz_min'] > 0:
+                        roots[0] = 1
+                    else:
+                        roots[0] = -1
+
+                if self.compressor_ison:
+                    if T_ff - self.logic_vars['ff_min'] > 0:
+                        roots[1] = 1
+                    else:
+                        roots[1] = -1
+                else:
+                    roots[1] = 1
+
+
             if roots != self.roots or self.first:
 
                 self.roots = roots
-                print('Roots crossed ', roots)
+
+
                 only_fz, compressor_ison, pulldown = self.external_logic(T_ff, T_fz, self.logic_vars, self.only_fz, self.compressor_ison)
 
-                print('Logic only_fz,comp', only_fz, compressor_ison)
+
                 #self.hybrid_control(only_fz, compressor_ison, pulldown,test)
-                self.parallel_control(only_fz, compressor_ison, pulldown,test)
 
-    def parallel_control(self,only_fz, compressor_ison, pulldown,test):
+                if compressor_ison and not only_fz and T_fz<T_ff-7:
+
+                    pumpout=True
+
+                else:
+                    pumpout=False
+                print()
+                print('Roots crossed {} Tff: {} Tfz: {}'.format(roots,T_ff,T_fz))
+                print('only_fz {} comp_ison {}, pulldown {} pumpout {}'.format(only_fz, compressor_ison, pulldown,pumpout))
+                self.parallel_control(only_fz, compressor_ison, pulldown,pumpout,test)
+
+    def parallel_control(self,only_fz, compressor_ison, pulldown,pumpout,test):
+
+
+        pumpout_time=self.logic_vars['pumpout']*pumpout
+
+
         if not compressor_ison:
             valve_pos = self.valve_positions['Closed']
             fan_ff = '2'
             fan_fz = '2'
             comp_rpm = '0'
-            ck='1200'
+            self.custom_valve_control=False
+            ck=250
+
         else:
             if only_fz:
                 valve_pos = self.valve_positions['FZ']
                 fan_ff = '2'
                 fan_fz = '1'
-                ck = '3000'
+                ck=250
+                self.custom_valve_control=False
                 comp_rpm = self.logic_vars['rpm']
+
             else:
                 valve_pos = self.valve_positions['FF']
                 fan_ff = '1'
                 fan_fz = '2'
                 comp_rpm = self.logic_vars['rpm']
-                ck = '1200'
-            # if pulldown:
-            #     comp_rpm = self.logic_vars['pd_rpm']
-            #     fan_ff = '1'
-            #     fan_fz = '1'
-
-        if self.ui.enablelogic.isChecked() or test:
-            self.first = False
-            self.delay = time.time()
-            self.only_fz = only_fz
-            self.compressor_ison = compressor_ison
-            if self.ui.enablelogic.isChecked():
-                self.logic_command(valve_pos, fan_ff, fan_fz, comp_rpm,ck)
-
-
-
-    def hybrid_control(self,only_fz, compressor_ison, pulldown,test):
-        if not compressor_ison:
-            valve_pos = self.valve_positions['Closed']
-            fan_ff = '2'
-            fan_fz = '2'
-            comp_rpm = '0'
-        else:
-            if only_fz:
-                valve_pos = self.valve_positions['FZ']
-                fan_ff = '2'
-                fan_fz = '1'
-                comp_rpm = self.logic_vars['rpm']
-            else:
-                valve_pos = self.valve_positions['FF']
-                fan_ff = '1'
-                fan_fz = '2'
-                comp_rpm = self.logic_vars['rpm']
-
+                self.custom_valve_control=True
+                ck = 0
             if pulldown:
                 comp_rpm = self.logic_vars['pd_rpm']
-                fan_ff = '1'
-                fan_fz = '1'
+
+            if pumpout:
+                ck=250
+                valve_pos=self.valve_positions['Closed']
 
         if self.ui.enablelogic.isChecked() or test:
             self.first = False
             self.delay = time.time()
             self.only_fz = only_fz
             self.compressor_ison = compressor_ison
-            if self.ui.enablelogic.isChecked():
-                self.logic_command(valve_pos, fan_ff, fan_fz, comp_rpm)
+            self.logic_command(test,valve_pos, fan_ff, fan_fz, comp_rpm,ck,pumpout_time)
 
-    def logic_command(self, valve_pos, fan_ff, fan_fz, comp_rpm,ck=None):
+
+
+
+
+    def logic_command(self, test,valve_pos, fan_ff, fan_fz, comp_rpm,ck=0,pumpout=0):
 
         rel_pos = valve_pos - float(self.ui.statusstep.text())
+
+        rel_ck = ck - float(self.ui.statusckvalve.text())
+
+        if rel_ck < 0:
+            rel_ck = -rel_ck + 2000
+
         if rel_pos < 0:
             rel_pos = -rel_pos + 1000
-        if ck is not None:
 
-            self.arduino_thread.command_arduino.append( "{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,ck))
-            self.ui.console.appendPlainText("{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,ck))
+        if test:
+            self.ui.console.appendPlainText("{},{},{},{},{}".format(int(rel_pos), fan_ff, fan_fz, int(rel_ck), pumpout))
         else:
-            self.arduino_thread.command_arduino.append( "{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,0))
-            self.ui.console.appendPlainText("{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,0))
+            self.inverter_thread.command_inverter = int(comp_rpm)
+          #  if ck is not None:
 
-        self.inverter_thread.command_inverter = int(comp_rpm)
+            self.arduino_thread.command_arduino.append( "{},{},{},{},{}".format(int(rel_pos),fan_ff, fan_fz,int(rel_ck),int(pumpout)))
 
-        self.ui.console.appendPlainText()
+            self.ui.console.appendPlainText("{},{},{},{},{}".format(int(rel_pos),fan_ff, fan_fz,int(rel_ck),int(pumpout)))
+            # else:
+            #     self.arduino_thread.command_arduino.append( "{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,0))
+            #     self.ui.console.appendPlainText("{},{},{},{},".format(int(rel_pos),fan_ff, fan_fz,0))
+
+
+
+
 
     def custom_command(self):
         if self.arduino_thread.command_status == 'Done':
@@ -515,11 +595,37 @@ class Control:
             self.inverter_thread.command_inverter = int(self.ui.rpminput.text())
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + 'Sent rpm ' + self.ui.rpminput.text())
 
-    def reset_valve(self):
-        command = '3000' + ',0,0'
-        self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + 'Sent reset valve ' + command)
-        self.arduino_thread.command_arduino.append(command)
 
+    def hybrid_control(self,only_fz, compressor_ison, pulldown,test):
+        if not compressor_ison:
+            valve_pos = self.valve_positions['Closed']
+            fan_ff = '2'
+            fan_fz = '2'
+            comp_rpm = '0'
+        else:
+            if only_fz:
+                valve_pos = self.valve_positions['FZ']
+                fan_ff = '2'
+                fan_fz = '1'
+                comp_rpm = self.logic_vars['rpm']
+            else:
+                valve_pos = self.valve_positions['FF']
+                fan_ff = '1'
+                fan_fz = '2'
+                comp_rpm = self.logic_vars['rpm']
+
+            if pulldown:
+                comp_rpm = self.logic_vars['pd_rpm']
+                fan_ff = '1'
+                fan_fz = '1'
+
+        if self.ui.enablelogic.isChecked() or test:
+            self.first = False
+            self.delay = time.time()
+            self.only_fz = only_fz
+            self.compressor_ison = compressor_ison
+            if self.ui.enablelogic.isChecked():
+                self.logic_command(test,valve_pos, fan_ff, fan_fz, comp_rpm)
 # serialConnection = connect('USB-SERIAL CH340')
 # while True:
 # serialConnection.write('0,0,0\r'.encode())

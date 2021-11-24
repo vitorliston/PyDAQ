@@ -134,7 +134,7 @@ class inverter:
 
         if D == '':
             D = '0'
-        print(C,D)
+
         Sum = int(A, 16) + int(B, 16) + int(C, 16) + int(D, 16)
 
         checksum = 0xff - int(str(hex(Sum))[0:2] + str(hex(Sum))[-2] + str(hex(Sum))[-1], 16) + 1

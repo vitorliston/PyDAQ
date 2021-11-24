@@ -1,4 +1,5 @@
-def logic(T_ff,T_fz,logic_vars,only_fz,compressor_ison,logic=2):
+def logic(T_ff,T_fz,logic_vars,only_fz,compressor_ison):
+    logic=int(logic_vars['logic'])
     if logic==1:
         if T_fz > logic_vars['fz_max'] + 7 or T_ff > logic_vars['ff_max'] + 7:
             pulldown = True
@@ -28,26 +29,49 @@ def logic(T_ff,T_fz,logic_vars,only_fz,compressor_ison,logic=2):
 
     elif logic==2:
 
-        if T_fz > logic_vars['fz_max'] + 7 or T_ff > logic_vars['ff_max'] + 7:
+        pulldown = False
+        if T_fz > 14 or T_ff > logic_vars['ff_max']+1:
             pulldown = True
-        else:
-            pulldown = False
 
 
 
         if T_ff <= logic_vars['ff_min']:
-            print(1)
+
             only_fz = True
             compressor_ison = T_fz >= logic_vars['fz_min']
 
         elif T_ff >= logic_vars['ff_max']:
-            print(2)
+
             only_fz = False
             compressor_ison = True
 
         elif T_fz <= logic_vars['fz_min']:
-            print(3)
+
             compressor_ison = T_ff >= logic_vars['ff_max']
             only_fz = False
+
+    elif logic==3:
+
+        pulldown = False
+        if T_fz > 14 or T_ff > logic_vars['ff_max']+1:
+            pulldown = True
+
+
+
+        if T_fz <= logic_vars['fz_min']:
+
+            only_fz = False
+            compressor_ison = T_ff >= logic_vars['ff_min']
+
+        elif T_fz >= logic_vars['fz_max']:
+
+            only_fz = True
+            compressor_ison = True
+
+        elif T_ff <= logic_vars['ff_min']:
+
+            compressor_ison = T_fz >= logic_vars['fz_max']
+            only_fz = True
+
 
     return [only_fz,compressor_ison,pulldown]

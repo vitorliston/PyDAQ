@@ -1,5 +1,5 @@
 Cycle_arch;"Parallel"
-Charge;35.19
+Charge;60.95
 FF_air;([FF_air_top]+[FF_air_mid1]+[FF_air_mid2]+[FF_air_bot])/4
 FZ_air;([FZ_air_top]+[FZ_air_bot])/2
 Comp_W;[WT1_W1]-[WT1_W2]
@@ -13,10 +13,13 @@ SUP_FZ;([FZ_evap_out]-[FZ_evap_in])
 SUP_FF;([FF_evap_out]-[FF_evap_in])
 SUB;([Cond_in]-[Cond_out])
 RTRfz;(0.6*([Tamb]-[FZ_air])+0.125*(4-[FZ_air])+2)/(0.6*([Tamb]-[FZ_air])+0.125*([FF_air]-[FZ_air])+2+[Power_FZ])
-RTRff;(1.4*([Tamb]-[FF_air])+0.125*(-18-[FF_air])+2)/(1.44*([Tamb]-[FF_air])+0.125*([FZ_air]-[FF_air])+2+[Power_FF])
+RTRff;(1.44*([Tamb]-[FF_air])+0.125*(-18-[FF_air])+2)/(1.44*([Tamb]-[FF_air])+0.125*([FZ_air]-[FF_air])+2+[Power_FF])
 ECfz;0.73*[RTRfz]*([WT1_W1]-0.6)
 ECff;0.73*[RTRff]*([WT1_W1]-0.6)
 TE;PropsSI('T','P',[P_suc]*1E5,'Q',0,'R600A')-273.15
+TE_fz;PropsSI('T','P',[P_fz]*1E5,'Q',0,'R600A')-273.15
+PE_ff_w;PropsSI('P','T',[FF_evap_in]+273.15,'Q',0,'R600A')/1E5
+Delta_p;[P_fz]-[P_suc]
 TC;PropsSI('T','P',[P_disc]*1E5,'Q',0,'R600A')-273.15
 Energy;[WT1_WH1]
 #UA_M;([WT2_W1]-1.4*([Tamb]-[FF_air]))/([FF_air]-[FZ_air])

@@ -150,11 +150,14 @@
                       <property name="leftMargin">
                        <number>3</number>
                       </property>
+                      <property name="topMargin">
+                       <number>3</number>
+                      </property>
                       <property name="rightMargin">
                        <number>3</number>
                       </property>
                       <property name="bottomMargin">
-                       <number>6</number>
+                       <number>3</number>
                       </property>
                       <item row="1" column="0">
                        <widget class="QTreeWidget" name="treevar">
@@ -242,6 +245,9 @@
                       <property name="leftMargin">
                        <number>0</number>
                       </property>
+                      <property name="bottomMargin">
+                       <number>3</number>
+                      </property>
                       <item row="0" column="1">
                        <widget class="QLineEdit" name="savefilepath"/>
                       </item>
@@ -250,41 +256,13 @@
                         <property name="minimumSize">
                          <size>
                           <width>175</width>
-                          <height>114</height>
+                          <height>143</height>
                          </size>
                         </property>
                         <property name="title">
                          <string>Gráficos</string>
                         </property>
                         <layout class="QGridLayout" name="gridLayout_14">
-                         <item row="0" column="1">
-                          <widget class="QPushButton" name="bcloseall">
-                           <property name="text">
-                            <string>Fechar todos</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
-                          <widget class="QPushButton" name="bsavecolors">
-                           <property name="text">
-                            <string>Salvar gráfic.</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QPushButton" name="reorganize">
-                           <property name="text">
-                            <string>Reorganizar</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QPushButton" name="bloadcolors">
-                           <property name="text">
-                            <string>Carreg. gráfic.</string>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="0" column="0">
                           <widget class="QPushButton" name="addplot">
                            <property name="maximumSize">
@@ -298,10 +276,45 @@
                            </property>
                           </widget>
                          </item>
+                         <item row="2" column="0">
+                          <widget class="QPushButton" name="bloadcolors">
+                           <property name="text">
+                            <string>Car. gráfic. 1</string>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="1" column="0">
                           <widget class="QPushButton" name="bclearplots">
                            <property name="text">
                             <string>Limpar</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QPushButton" name="bsavecolors">
+                           <property name="text">
+                            <string>Sal. gráfic. 1</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QPushButton" name="bcloseall">
+                           <property name="text">
+                            <string>Fechar todos</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QPushButton" name="reorganize">
+                           <property name="text">
+                            <string>Reorganizar</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QPushButton" name="exportvar">
+                           <property name="text">
+                            <string>Export. var.</string>
                            </property>
                           </widget>
                          </item>
@@ -344,6 +357,19 @@
                       </item>
                      </layout>
                     </widget>
+                   </item>
+                   <item row="1" column="1">
+                    <spacer name="horizontalSpacer">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>10</height>
+                      </size>
+                     </property>
+                    </spacer>
                    </item>
                   </layout>
                  </widget>

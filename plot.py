@@ -1,4 +1,3 @@
-
 from functools import partial
 
 import numpy as np
@@ -10,6 +9,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 import numpy
 from pyqtgraph.Point import Point
+
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 
 pg.setConfigOption('background', 'w')
@@ -17,6 +17,7 @@ pg.setConfigOption('foreground', 'k')
 pg.setConfigOption('background', 'w')
 
 pg.setConfigOption('antialias', True)  # Set to False if there is too much lag when dragging scene
+
 
 class ColorAction(QtGui.QWidgetAction):
     colorSelected = QtCore.pyqtSignal(QtGui.QColor)
@@ -40,7 +41,7 @@ class ColorAction(QtGui.QWidgetAction):
 
                 button = QtGui.QToolButton(widget)
                 button.setAutoRaise(True)
-                button.clicked.connect(partial(self.handleButton,color))
+                button.clicked.connect(partial(self.handleButton, color))
 
                 pixmap = QtGui.QPixmap(16, 16)
                 pixmap.fill(color)
@@ -61,6 +62,7 @@ class ColorAction(QtGui.QWidgetAction):
                         r * 255 // 3, g * 255 // 3, b * 255 // 2))
         return palette
 
+
 class PlotCurveItem(pg.PlotCurveItem):
     def __init__(self, *args, **kargs):
         self.ma = 0
@@ -68,7 +70,6 @@ class PlotCurveItem(pg.PlotCurveItem):
         self.avg = None
         self.menu = QtGui.QMenu()
         self.do_ma = False
-
 
         self.colorAction = ColorAction(self.menu)
         self.colorAction.colorSelected.connect(self.handleColorSelected)
@@ -85,35 +86,37 @@ class PlotCurveItem(pg.PlotCurveItem):
 
         a = QWidgetAction(self)
 
-
-        self.spin=QSpinBox()
-        self.spin.setSingleStep(5)
-        self.spin.setMaximum(100)
+        self.spin = QSpinBox()
+        self.spin.setSingleStep(10)
+        self.spin.setMaximum(1000)
         self.spin.valueChanged.connect(self.moving_average)
         a.setDefaultWidget(self.spin)
         self.sub_menu.addAction(a)
 
         self.menu.addMenu(self.sub_menu)
 
-        self.yData_ma=[]
-        self.yData_unaltered=[]
+        self.yData_ma = []
+        self.yData_unaltered = []
+
+
+
+
     def moving_average(self):
 
-        value=self.spin.value()
+        value = self.spin.value()
 
-
-        if len(self.xData)>value:
+        if len(self.xData) > value:
             self.yData_ma = []
             self.ma = value
-            if value>1:
-                self.do_ma=True
-                self.yData_ma=[sum(self.yData_unaltered[:value-1])/len(self.yData_unaltered[:value-1])]*len(self.yData_unaltered[:value-1])+list(self._moving_average(self.yData_unaltered,value))
+            if value > 1:
+                self.do_ma = True
+                self.yData_ma = [sum(self.yData_unaltered[:value - 1]) / len(self.yData_unaltered[:value - 1])] * len(self.yData_unaltered[:value - 1]) + list(self._moving_average(self.yData_unaltered, value))
                 self.setData_ma(self.xData, self.yData_ma)
             else:
                 self.do_ma = False
-                self.setData_ma(self.xData,self.yData_unaltered)
+                self.setData_ma(self.xData, self.yData_unaltered)
 
-    def _moving_average(self,x, w):
+    def _moving_average(self, x, w):
 
         return np.convolve(x, np.ones(w), 'valid') / w
 
@@ -121,20 +124,21 @@ class PlotCurveItem(pg.PlotCurveItem):
         if len(args) == 2:
             self.yData_unaltered = args[1]
             if self.do_ma:
-                n=self.spin.value()
-                if len(self.yData_unaltered)>n:
+                n = self.spin.value()
+                if len(self.yData_unaltered) > n:
 
-                    val=self.yData_ma[-1]+(self.yData_unaltered[-1]-self.yData_unaltered[-n])/n
+                    val = self.yData_ma[-1] + (self.yData_unaltered[-1] - self.yData_unaltered[-n]) / n
                     self.yData_ma.append(val)
                 else:
-                    self.do_ma=False
+                    self.do_ma = False
                     self.spin.setValue(0)
-                    self.ma=0
+                    self.ma = 0
 
-        self.setData_ma( *args, **kargs)
-
+        self.setData_ma(*args, **kargs)
 
     def setData_ma(self, *args, **kargs):
+
+
 
 
         if self.ma > 1:
@@ -159,9 +163,6 @@ class PlotCurveItem(pg.PlotCurveItem):
         pen = pg.mkPen(color=color.getRgb(), width=1)
         self.setPen(pen)
 
-
-
-
     def get_avg(self):
         try:
             self.avg = sum(self.yData) / len(self.yData)
@@ -170,9 +171,8 @@ class PlotCurveItem(pg.PlotCurveItem):
             return 0
 
     def mouseClickEvent(self, ev):
-        pos=ev.pos()
+        pos = ev.pos()
         if ev.button() == QtCore.Qt.RightButton:
-
 
             if self.mouseShape().contains(pos):
 
@@ -201,9 +201,8 @@ class PlotWidget(pg.PlotWidget):
     def __init__(self, *args, **kargs):
         super(PlotWidget, self).__init__(*args, **kargs)
         self.plotItem.ctrlMenu = None  # get rid of 'Plot Options'
-        self.getPlotItem().layout.setContentsMargins(0,0,0,0)
+        self.getPlotItem().layout.setContentsMargins(0, 0, 0, 0)
         self.scene().contextMenu = None  # get rid of 'Export'
-
 
     # On right-click, raise the context menu
     def mouseClickEvent(self, ev):
@@ -229,9 +228,6 @@ class PlotWidget(pg.PlotWidget):
         return self.menu
 
 
-
-
-
 class Qframe2(QFrame):
     signalStatus = pyqtSignal(QFrame)
 
@@ -240,7 +236,6 @@ class Qframe2(QFrame):
 
     @pyqtSlot()
     def mousePressEvent(self, *args, **kwargs):
-
         self.signalStatus.emit(self)
 
 
@@ -265,11 +260,11 @@ class PlotWindow(QMdiSubWindow):
         self.setWindowTitle('Plot ' + str(count))
         self.identifiers = [1, 2, 3, 4, 5, 6]
         self.plotlist = []
-        self.line_styles =line_styles
-        self.frame=None
+        self.line_styles = line_styles
+        self.frame = None
         # , border=(0, 0, 0), fill=(255, 255, 255)
 
-        self.plottooltip = pg.TextItem('None', color=(0, 0, 0),anchor=(0,1))
+        self.plottooltip = pg.TextItem('None', color=(0, 0, 0), anchor=(0, 1))
 
         # self.viewAll = QAction("sadsadsad", self.menu)
 
@@ -308,12 +303,7 @@ class PlotWindow(QMdiSubWindow):
         self.show_tooltip = True
         self.show_hline = False
 
-
-
-
-
         self.add_subplot()
-
 
     def toogle_grid(self):
         if self.menu.grid.isChecked():
@@ -326,6 +316,7 @@ class PlotWindow(QMdiSubWindow):
     def toogle_scalex(self):
 
         self.focused['Plot'].vb.enableAutoRange('x')
+
     def toogle_scale(self):
 
         self.focused['Plot'].vb.enableAutoRange()
@@ -336,7 +327,7 @@ class PlotWindow(QMdiSubWindow):
 
     def add_subplot(self):
         frame = Qframe2()
-        self.frame=frame
+        self.frame = frame
         frame.signalStatus.connect(self.setfocused)
         frame.setStyleSheet("""
                         QFrame {
@@ -351,12 +342,11 @@ class PlotWindow(QMdiSubWindow):
 
         plot.addLegend(offset=(1, 1))
 
-
         lay = QVBoxLayout()
         lay.addWidget(plot)
 
         frame.setLayout(lay)
-        self.plotlist.append({'Widget':plot,'Plot': plot.getPlotItem(), 'Frame': frame, 'Ploted': {}})
+        self.plotlist.append({'Widget': plot, 'Plot': plot.getPlotItem(), 'Frame': frame, 'Ploted': {}})
 
         self.splitter.addWidget(frame)
 
@@ -367,10 +357,10 @@ class PlotWindow(QMdiSubWindow):
 
         self.setfocused()
         self.focused = self.plotlist[0]
+
     def setfocused(self):
 
-        item=self.plotlist[0]
-
+        item = self.plotlist[0]
 
         if bool(item['Ploted']):
             for toplevel in range(self.treevar.topLevelItemCount()):
@@ -397,15 +387,21 @@ class PlotWindow(QMdiSubWindow):
                 corrected = QtCore.QPointF(mousePoint1.x(), mousePoint1.y())
 
                 if item.mouseShape().contains(corrected):
-                    ind = (np.abs(item.xData - mousePoint1.x()).argmin())-1
+                    ind = (np.abs(item.xData - mousePoint1.x()).argmin()) - 1
                     y = item.yData[ind] + (mousePoint1.x() - item.xData[ind]) * (item.yData[ind + 1] - item.yData[ind]) / (item.xData[ind + 1] - item.xData[ind])
 
                     show = True
-                    self.plottooltip.setText( ' '+item.name()+' '+ str(round(y, 2)) + '\n Avg ' + str(round(item.get_avg(), 2)) + '\n Current ' + str(round(item.yData[1], 2)))
+                    der =''
+                    if item.do_ma:
+                        try:
+                            der ='\n Deriv'+ '{:.2e}'.format((item.yData_ma[ind + int(0.5 * item.spin.value())] - item.yData_ma[ind - int(0.5 * item.spin.value())]) / (item.xData[ind + int(0.5 * item.spin.value())] - item.xData[ind - int(0.5 * item.spin.value())]))
+                        except Exception as e:
 
+                            der='\n Deriv N/A'
+
+                    self.plottooltip.setText(' ' + item.name() + ' ' + str(round(y, 2)) + '\n Avg ' + str(round(item.get_avg(), 2)) + '\n Current ' + str(round(item.yData[1], 2))+der)
 
                     self.plottooltip.setPos(mousePoint1.x(), mousePoint1.y())
-
 
                     if self.plottooltip not in plot.items:
                         plot.addItem(self.plottooltip, ignoreBounds=True)

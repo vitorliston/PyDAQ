@@ -36,7 +36,7 @@ class Inverter(QThread):
             self.signalStatus.emit('Error')
 
         while self.thread:
-            sleep(1)
+            sleep(0.1)
             self.variables['Set_rpm'] = self.inverter.current_set_speed
             if self.command_inverter is not None:
                 self.send_inverter()

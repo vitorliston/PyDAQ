@@ -18,11 +18,11 @@ class Arduino(QThread):
         self.command_arduino = []
 
         self.thread = True
-
-        self.variables = {'Valve': 0, 'fan_ff': 0, 'fan_fz': 0,'Check_valve':0}
-        self.names = {'V': 'Valve', 'FF': 'fan_ff', 'FZ': 'fan_fz','CK':'Check_valve'}
+       
+        self.variables = {'Valve': 0, 'fan_ff': 0, 'fan_fz': 0,'Check_valve':0,'Pumpout':0}
+        self.names = {'V': 'Valve', 'FF': 'fan_ff', 'FZ': 'fan_fz','CK':'Check_valve','PP':'Pumpout'}
         self.serialConnection = None
-
+        self.ready=True
     @QtCore.pyqtSlot()
     def run(self):
         try:
@@ -37,20 +37,23 @@ class Arduino(QThread):
 
                 try:
 
-                    if self.command_arduino != []:
+                    if self.command_arduino != [] and self.ready:
                         self.send_arduino()
-                        print(self.command_arduino[0])
+                        self.ready=False
+                        print("Sent {}".format(self.command_arduino[0]))
                         del self.command_arduino[0]
+
                     if self.serialConnection.inWaiting()>0:
                         a=self.read_arduino()
 
                         if bool(a):
-                            self.variables.update(a)
 
+                            self.variables.update(a)
+                            self.ready=True
                             self.signalStatus.emit('UPDATE')
 
 
-                    sleep(0.5)
+                    sleep(0.1)
 
                 except:
                     print(traceback.print_exc())
@@ -79,7 +82,7 @@ class Arduino(QThread):
     def read_arduino(self):
 
         response = self.serialConnection.readline().decode('utf-8').strip('\r\n').split(',')
-        print(response)
+        print("Received {}".format(response))
         res = {}
 
         for i in response:

@@ -1,0 +1,10 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+.idea/*
+*.pyc
+Saved_files/*
+*.ini
+Control/*
+log.txt
+*.ino

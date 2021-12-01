@@ -4,26 +4,27 @@ from PyQt5.QtCore import QTimer
 from threads.arduino_thread import Arduino
 from threads.inverter_thread import Inverter
 from threads.rpm_acc_thread import RPM_ACC
-from CoolProp.CoolProp import PropsSI
+from PyQt5 import QtCore, QtWidgets, uic
+import os
 
 class Control:
-    def __init__(self, tab, main_interface):
+    def __init__(self, tab, status_bar):
 
-        self.main_interface = main_interface
+        self.statusbar = status_bar
         self.ui = tab
         self.arduino_thread = None
         self.inverter_thread = None
-
         self.connected = False
-
         self.millis = 0
         self.custom_valve_control=False
         self.serialport = None
-
         self.time = []
         self.tff = []
         self.tfz = []
         self.rpm_acc_thread = None
+
+        uic.loadUi(os.path.dirname(__file__) + '/control.ui', self.ui)
+
         self.ui.testbutton.clicked.connect(self.test)
         self.ui.connect.clicked.connect(self.connect_arduino)
         self.ui.setlogic.clicked.connect(self.set_logic)
@@ -78,7 +79,7 @@ class Control:
         if not self.ui.enablelogic.isChecked():
             self.first = True
         l = self.ui.logicinput.toPlainText().split('\n')
-       
+
         self.ui.console.appendPlainText('Set logic:')
         for i in l:
             i = i.split(',')
@@ -89,11 +90,11 @@ class Control:
         self.external_logic = logic
 
     def connect_inverter(self):
-        
+
         if self.inverter_thread is not None:
             self.inverter_thread.inverter.ser.close()
             self.inverter_thread.thread=False
-        
+
         self.inverter_thread = Inverter(self.ui.compport.text(), int(self.ui.compbaud.text()))
         self.inverter_thread.signalStatus.connect(self.update_gui_inverter)
         self.inverter_thread.start()
@@ -117,13 +118,13 @@ class Control:
             self.arduino_thread = None
             self.ui.arduinostatus.setText('Error')
             self.ui.arduinostatus.setStyleSheet('color: red')
-            self.main_interface.statusbar.showMessage(message, 5000)
+            self.statusbar.showMessage(message, 5000)
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + message)
 
         elif message == 'Arduino connected':
             self.ui.arduinostatus.setText('Connected')
             self.ui.arduinostatus.setStyleSheet('color: green')
-            self.main_interface.statusbar.showMessage(message, 5000)
+            self.statusbar.showMessage(message, 5000)
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + message)
 
         elif message == 'UPDATE':
@@ -140,7 +141,7 @@ class Control:
             self.arduino_thread.thread = False
 
         self.connected = True
-        self.main_interface.statusbar.showMessage('Connecting Arduino', 5000)
+        self.statusbar.showMessage('Connecting Arduino', 5000)
         self.arduino_thread = Arduino()
         self.arduino_thread.start()
         self.arduino_thread.signalStatus.connect(self.com)
@@ -204,16 +205,16 @@ class Control:
                 self.ui.statusfzfan.setText("Off")
 
     def update_gui_inverter(self, a):
-        
+
         if a == 'Connected':
             self.ui.inverterstatus.setText('Connected')
             self.ui.inverterstatus.setStyleSheet('color: green')
-            self.main_interface.statusbar.showMessage('Inverter connected', 5000)
+            self.statusbar.showMessage('Inverter connected', 5000)
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + 'Inverter connected')
         if a == 'Error':
             self.ui.inverterstatus.setText('Error')
             self.ui.inverterstatus.setStyleSheet('color: red')
-            self.main_interface.statusbar.showMessage('Error inverter', 5000)
+            self.statusbar.showMessage('Error inverter', 5000)
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + 'Error inverter')
             self.inverter_thread = None
 
@@ -285,30 +286,8 @@ class Control:
         except Exception as e:
             print(traceback.print_exc())
 
-    def compressor_model(self, P1, P2, T1, rpm,T_E):
 
-        P1 = P1 * 100000
-        P2 = P2 * 100000
-        T1 += 273.15
-
-        a_m, b_m, c_m, a_w, b_w, c_w = [6.291086697837868e-08, 6.337393920938311e-09, 0.5197147324693387, 279.01040522293926, 0.3903799959948377, 42040.687159235546]
-        w = (a_w * T1 * ((P2 / P1) ** b_w - 1))
-        m_comp = (rpm / 60) * P1 / T1 * (a_m - b_m * ((P2 / P1) ** c_m - 1))
-        W_comp = m_comp * (w + c_w)
-
-
-        P1 = PropsSI('P','T',273.15+T_E,'Q',0,'R600A')
-
-        w = (a_w * T1 * ((P2 / P1) ** b_w - 1))
-        m_comp_temp = (rpm / 60) * P1 / T1 * (a_m - b_m * ((P2 / P1) ** c_m - 1))
-        W_comp_temp = m_comp * (w + c_w)
-        
-
-        
-
-        return {'m_comp': round(m_comp * 3600, 3), 'W_comp': round(W_comp, 3),'m_comp_temp': round(m_comp_temp * 3600, 3), 'W_comp_temp': round(W_comp_temp, 2)}
-
-    def get_variables(self, daq_variables):
+    def update(self, daq_variables):
 
         try:
 
@@ -324,7 +303,7 @@ class Control:
             if self.inverter_thread is not None:
                 self.control_variables.update(self.inverter_thread.variables)
 
-            self.control_variables.update(self.compressor_model(daq_variables['P_suc'], daq_variables['P_disc'], daq_variables['Comp_suc'], self.control_variables['Set_rpm'],min(daq_variables['FZ_evap_in'],daq_variables['FF_evap_in'])))
+
 
             self.control_variables['CKV_setting'] = float(self.ui.statusckvalve.text())
             self.control_variables['Valve_setting'] = self.valve_names[int(float(self.ui.statusstep.text()))]
@@ -583,11 +562,11 @@ class Control:
             self.arduino_thread.command_arduino.append(command)
             self.ui.console.appendPlainText(time.strftime("%H:%M:%S ") + '' + 'Sent ' + command)
 
-            self.main_interface.statusbar.showMessage('Command sent', 10000)
+            self.statusbar.showMessage('Command sent', 10000)
         else:
 
             self.ui.console.appendPlainText('Command still executing , please wait')
-            self.main_interface.statusbar.showMessage('Controller still executing command, please wait', 10000)
+            self.statusbar.showMessage('Controller still executing command, please wait', 10000)
 
     def custom_rpm(self):
         if self.inverter_thread is not None:

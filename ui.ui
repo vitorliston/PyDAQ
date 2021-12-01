@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1121</width>
-    <height>726</height>
+    <width>1282</width>
+    <height>761</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -405,6 +405,150 @@
             <property name="horizontalSpacing">
              <number>30</number>
             </property>
+            <item row="0" column="2" rowspan="2" alignment="Qt::AlignLeft">
+             <widget class="QFrame" name="frame_2">
+              <property name="frameShape">
+               <enum>QFrame::StyledPanel</enum>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_19">
+               <item row="1" column="0">
+                <widget class="QGroupBox" name="groupBox">
+                 <property name="maximumSize">
+                  <size>
+                   <width>300</width>
+                   <height>300</height>
+                  </size>
+                 </property>
+                 <property name="title">
+                  <string>Instrument scanner</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_3">
+                  <item row="1" column="0" alignment="Qt::AlignRight">
+                   <widget class="QPushButton" name="bscan_instrument">
+                    <property name="text">
+                     <string>Scan</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="0">
+                   <widget class="QPlainTextEdit" name="instrument_scanner_text"/>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QGroupBox" name="groupBox_7">
+                 <property name="maximumSize">
+                  <size>
+                   <width>300</width>
+                   <height>500</height>
+                  </size>
+                 </property>
+                 <property name="title">
+                  <string>Log</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_8">
+                  <item row="0" column="0">
+                   <widget class="QPlainTextEdit" name="log_text"/>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item row="0" column="0">
+                <widget class="QGroupBox" name="groupBox_2">
+                 <property name="title">
+                  <string>Yokogawa controls</string>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_18">
+                  <item row="0" column="2">
+                   <widget class="QPushButton" name="stopintegral">
+                    <property name="text">
+                     <string>Stop integral</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QPushButton" name="startintegral">
+                    <property name="text">
+                     <string>Start integral</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="2">
+                   <widget class="QPushButton" name="autorange">
+                    <property name="maximumSize">
+                     <size>
+                      <width>100</width>
+                      <height>16777215</height>
+                     </size>
+                    </property>
+                    <property name="text">
+                     <string>Autorange </string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QPushButton" name="resetintegral">
+                    <property name="text">
+                     <string>Reset integral</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item row="0" column="1" alignment="Qt::AlignTop">
+             <widget class="QGroupBox" name="groupBox_3">
+              <property name="minimumSize">
+               <size>
+                <width>220</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>220</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="title">
+               <string>Control extension</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_20">
+               <item row="0" column="0">
+                <layout class="QFormLayout" name="formLayout_2">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label">
+                   <property name="text">
+                    <string>Module</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLabel" name="controlname">
+                   <property name="text">
+                    <string>-</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item row="1" column="0" alignment="Qt::AlignRight">
+                <widget class="QPushButton" name="loadcontrol">
+                 <property name="text">
+                  <string>Load</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
             <item row="0" column="0" rowspan="2">
              <widget class="QGroupBox" name="groupBox_4">
               <property name="minimumSize">
@@ -618,104 +762,6 @@
               </layout>
              </widget>
             </item>
-            <item row="0" column="2" rowspan="2" alignment="Qt::AlignLeft">
-             <widget class="QFrame" name="frame_2">
-              <property name="frameShape">
-               <enum>QFrame::StyledPanel</enum>
-              </property>
-              <property name="frameShadow">
-               <enum>QFrame::Raised</enum>
-              </property>
-              <layout class="QGridLayout" name="gridLayout_19">
-               <item row="1" column="0">
-                <widget class="QGroupBox" name="groupBox">
-                 <property name="maximumSize">
-                  <size>
-                   <width>300</width>
-                   <height>300</height>
-                  </size>
-                 </property>
-                 <property name="title">
-                  <string>Instrument scanner</string>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_3">
-                  <item row="1" column="0" alignment="Qt::AlignRight">
-                   <widget class="QPushButton" name="bscan_instrument">
-                    <property name="text">
-                     <string>Scan</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QPlainTextEdit" name="instrument_scanner_text"/>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QGroupBox" name="groupBox_7">
-                 <property name="maximumSize">
-                  <size>
-                   <width>300</width>
-                   <height>500</height>
-                  </size>
-                 </property>
-                 <property name="title">
-                  <string>Log</string>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_8">
-                  <item row="0" column="0">
-                   <widget class="QPlainTextEdit" name="log_text"/>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="0" column="0">
-                <widget class="QGroupBox" name="groupBox_2">
-                 <property name="title">
-                  <string>Yokogawa controls</string>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_18">
-                  <item row="0" column="2">
-                   <widget class="QPushButton" name="stopintegral">
-                    <property name="text">
-                     <string>Stop integral</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="1">
-                   <widget class="QPushButton" name="startintegral">
-                    <property name="text">
-                     <string>Start integral</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="2">
-                   <widget class="QPushButton" name="autorange">
-                    <property name="maximumSize">
-                     <size>
-                      <width>100</width>
-                      <height>16777215</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string>Autorange </string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QPushButton" name="resetintegral">
-                    <property name="text">
-                     <string>Reset integral</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-              </layout>
-             </widget>
-            </item>
             <item row="0" column="3">
              <widget class="QFrame" name="frame">
               <property name="frameShape">
@@ -741,11 +787,6 @@
          </widget>
         </item>
        </layout>
-      </widget>
-      <widget class="QWidget" name="control">
-       <attribute name="title">
-        <string>Controle</string>
-       </attribute>
       </widget>
       <widget class="QWidget" name="pids">
        <attribute name="title">

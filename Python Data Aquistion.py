@@ -8,7 +8,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from threads.daq_thread import daq_thread
 from threads.save_thread import save_thread
-from control_tab import Control
+
 from Aquisition import DAQ
 from plot import PlotWindow, PlotCurveItem
 from pid_tab import pid_tab
@@ -19,6 +19,7 @@ import random
 import csv
 import time
 from datetime import datetime
+import importlib
 
 class system_out:
     def __init__(self,stdout):
@@ -43,9 +44,10 @@ class MainWindow(QMainWindow):
         sys.stdout=system_out(sys.stdout)
 
         uic.loadUi(os.path.dirname(__file__) + '/ui.ui', self)
-        uic.loadUi(os.path.dirname(__file__) + '/control.ui', self.control)
+
         self.pid_section=pid_tab(self)
-        self.control_tab=Control(self.control,self)
+        #self.control_tab=Control(self.control,self)
+        self.control_tab=None
         self.bstartdaq.clicked.connect(self.start_daq)
         self.bstopdaq.clicked.connect(self.stop_daq)
         self.bcloseall.clicked.connect(self.close_plots)
@@ -86,13 +88,28 @@ class MainWindow(QMainWindow):
         self.reorganize.clicked.connect(self.reorgsubs)
         self.treevar.setHeaderHidden(False)
         self.treevar.itemClicked.connect(self.onItemClicked)
+        self.loadcontrol.clicked.connect(self.add_control_module)
 
         self.storedstring = ''
-
         self.settings_file='config.txt'
         self.curves_file='curves.txt'
         self.custom_file = 'custom_vars.txt'
         self.load_config_files()
+
+    def add_control_module(self):
+        try:
+            file = QFileDialog.getOpenFileName(self, "Open control module", '', filter="(*.py) ")[0]
+            self.controlname.setText(file.split('/')[-1])
+            spec = importlib.util.spec_from_file_location(file, file)
+            modelfile = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(modelfile)
+            widget=QWidget()
+            self.control_tab=modelfile.Control(widget,self.statusBar())
+            self.tabWidget_2.addTab(widget,'Control')
+            self.loadcontrol.setDisabled(True)
+        except Exception as e:
+            print(e)
+
     def export_var(self):
         with open("Saved_files/exported_vars.csv", "w") as outfile:
             writer = csv.writer(outfile)
@@ -452,7 +469,7 @@ class MainWindow(QMainWindow):
 
 
     def update_all(self):
-        self.daq_thread.variables.update(self.control_tab.get_variables(self.daq_thread.variables))
+        self.daq_thread.variables.update(self.control_tab.update(self.daq_thread.variables))
 
         if self.save_thread is not None:
             self.save_thread.variables = self.daq_thread.variables.copy()
@@ -512,10 +529,7 @@ class MainWindow(QMainWindow):
             self.daq.initialize(self.settings_file, self.curves_file,self.custom_file)
             self.daqstatus.setText('Running')
             self.first_output = True
-
-
             self.daq_thread = daq_thread(self.daq,self.checksavefile,int(self.daqinterval.text()))
-            self.daq_thread.control_tab=self.control_tab
             self.daqinterval.setDisabled(True)
             self.daq_thread.start()
             self.daq_thread.signalStatus.connect(self.update_all)
